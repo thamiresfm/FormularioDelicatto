@@ -133,12 +133,15 @@
         </section>
 
         <section id="sec-fotos" class="card hidden" aria-labelledby="step-fotos">
-          <h2 id="step-fotos" class="card-title">Fotos (3 em alta qualidade)</h2>
-          <p class="hint">Envie arquivos em HD ou originais da câmera (JPEG, PNG ou WebP). Evite prints muito comprimidos.</p>
+          <h2 id="step-fotos" class="card-title">Fotos (opcional, até 3 em alta qualidade)</h2>
+          <p class="hint">
+            Caso não queira adicionar fotos, não é necessário anexar as fotos!<br />
+            Envie arquivos em HD ou originais da câmera (JPEG, PNG ou WebP). Evite prints muito comprimidos.
+          </p>
           <div class="photo-grid">
             <label class="field field-foto-slot">
               <span class="field-label">Foto 1</span>
-              <input type="file" name="foto1" id="foto1" accept="image/jpeg,image/png,image/webp,image/heic" required />
+              <input type="file" name="foto1" id="foto1" accept="image/jpeg,image/png,image/webp,image/heic" />
               <div class="foto-preview hidden" id="foto1-preview" aria-live="polite">
                 <img class="foto-preview-img" alt="Prévia da foto 1" />
                 <p class="foto-preview-fallback hidden">Prévia indisponível para este formato (ex.: HEIC em alguns navegadores).</p>
@@ -146,7 +149,7 @@
             </label>
             <label class="field field-foto-slot">
               <span class="field-label">Foto 2</span>
-              <input type="file" name="foto2" id="foto2" accept="image/jpeg,image/png,image/webp,image/heic" required />
+              <input type="file" name="foto2" id="foto2" accept="image/jpeg,image/png,image/webp,image/heic" />
               <div class="foto-preview hidden" id="foto2-preview" aria-live="polite">
                 <img class="foto-preview-img" alt="Prévia da foto 2" />
                 <p class="foto-preview-fallback hidden">Prévia indisponível para este formato (ex.: HEIC em alguns navegadores).</p>
@@ -154,7 +157,7 @@
             </label>
             <label class="field field-foto-slot">
               <span class="field-label">Foto 3</span>
-              <input type="file" name="foto3" id="foto3" accept="image/jpeg,image/png,image/webp,image/heic" required />
+              <input type="file" name="foto3" id="foto3" accept="image/jpeg,image/png,image/webp,image/heic" />
               <div class="foto-preview hidden" id="foto3-preview" aria-live="polite">
                 <img class="foto-preview-img" alt="Prévia da foto 3" />
                 <p class="foto-preview-fallback hidden">Prévia indisponível para este formato (ex.: HEIC em alguns navegadores).</p>
@@ -221,10 +224,10 @@
         <h2 class="card-title">Resumo do pedido</h2>
         <dl class="resumo-list" id="resumo-conteudo"></dl>
         <p class="hint resumo-wa-hint">
-          <strong>No celular ou tablet:</strong> ao enviar, pode abrir o compartilhamento com o texto e as 3 imagens; escolha o
+          <strong>No celular ou tablet:</strong> ao enviar, pode abrir o compartilhamento com o texto e, se você anexou fotos, as imagens; escolha o
           <strong>WhatsApp</strong> e o contato da loja (+55 21 99672-8473).
-          <strong>No computador:</strong> abrimos o <strong>WhatsApp Web</strong> já com o texto do pedido — use o botão de anexar
-          ou arraste as 3 fotos para a conversa com a loja.
+          <strong>No computador:</strong> abrimos o <strong>WhatsApp Web</strong> já com o texto do pedido — se houver fotos, use o botão de anexar
+          ou arraste-as para a conversa com a loja.
         </p>
         <div class="actions actions-resumo">
           <button type="button" class="btn btn-ghost" id="btn-voltar">Voltar e editar</button>

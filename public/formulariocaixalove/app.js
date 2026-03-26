@@ -189,6 +189,14 @@ const form = document.getElementById("pedido-form");
   const MAX_FRASE_TAMPA = 45;
   const MAX_FRASE_DENTRO = 35;
 
+  function contarFotosAnexadas() {
+    let n = 0;
+    for (let i = 1; i <= NUM_FOTOS_PREVIEW; i++) {
+      if (document.getElementById(`foto${i}`).files[0]) n += 1;
+    }
+    return n;
+  }
+
   function validar() {
     clearFieldErrors();
     const erros = [];
@@ -235,20 +243,13 @@ const form = document.getElementById("pedido-form");
       markError("fraseDentro");
     }
 
-    const f1 = document.getElementById("foto1").files[0];
-    const f2 = document.getElementById("foto2").files[0];
-    const f3 = document.getElementById("foto3").files[0];
-    if (!f1 || !f2 || !f3) {
-      erros.push("Envie as 3 fotos.");
-      ["foto1", "foto2", "foto3"].forEach(markError);
-    } else {
-      [f1, f2, f3].forEach((f, i) => {
-        if (f.size < MIN_FOTO_BYTES) {
-          erros.push(`A foto ${i + 1} parece muito pequena; prefira arquivo HD ou original.`);
-          markError(`foto${i + 1}`);
-        }
-      });
-    }
+    const fotos = [1, 2, 3].map((i) => document.getElementById(`foto${i}`).files[0]);
+    fotos.forEach((f, i) => {
+      if (f && f.size < MIN_FOTO_BYTES) {
+        erros.push(`A foto ${i + 1} parece muito pequena; prefira arquivo HD ou original.`);
+        markError(`foto${i + 1}`);
+      }
+    });
 
     const rua = document.getElementById("rua").value.trim();
     if (rua.length < 2) {
@@ -332,13 +333,17 @@ const form = document.getElementById("pedido-form");
       })
       .filter(Boolean)
       .join(", ");
+    const nFotos = contarFotosAnexadas();
     let t = "*Delicatto Personalizados — novo pedido*\n\n";
     t += `Produto: ${textoTipo(tipo)}\n`;
     t += "Pagamento: confirmado\n";
     t += `Frase frente da caixa: ${document.getElementById("fraseTampa").value.trim()}\n`;
     t += `Destaque extra (frente): ${textoResumoExtra()}\n`;
     t += `Frase dentro da caixa: ${document.getElementById("fraseDentro").value.trim()}\n`;
-    t += `Fotos enviadas (nomes): ${nomesFotos || "—"}\n`;
+    t +=
+      nFotos === 0
+        ? "Fotos: nenhuma anexada (opcional).\n"
+        : `Fotos enviadas (nomes): ${nomesFotos}\n`;
     t += "\n*Endereço*\n";
     t += `Rua: ${document.getElementById("rua").value.trim()}\n`;
     t += `Número: ${document.getElementById("numero").value.trim()}\n`;
@@ -409,6 +414,15 @@ const form = document.getElementById("pedido-form");
     document.body.removeChild(a);
   }
 
+  function coletarArquivosFotosOrdenados() {
+    const out = [];
+    for (let i = 1; i <= NUM_FOTOS_PREVIEW; i++) {
+      const f = document.getElementById(`foto${i}`).files[0];
+      if (f) out.push(f);
+    }
+    return out.length ? out : null;
+  }
+
   function finalizarPedidoAposEnvio() {
     resumoAberto = false;
     panelResumo.classList.add("hidden");
@@ -434,24 +448,29 @@ const form = document.getElementById("pedido-form");
     }
 
     const mobile = isMobileDispositivo();
-    const temTresFotos = files && files.length === 3 && files.every(Boolean);
+    const temAlgumaFoto = files && files.length > 0;
     const temShare = typeof navigator !== "undefined" && navigator.share;
-    let podeCompartilharComFotos = mobile && temTresFotos && temShare;
+    let podeCompartilharComFotos = mobile && temAlgumaFoto && temShare;
     if (podeCompartilharComFotos && navigator.canShare) {
-      podeCompartilharComFotos = navigator.canShare({ files });
+      try {
+        podeCompartilharComFotos = navigator.canShare({ files });
+      } catch (_e) {
+        podeCompartilharComFotos = false;
+      }
     }
 
     if (podeCompartilharComFotos) {
       try {
+        const n = files.length;
         await navigator.share({
-          title: "Delicatto — texto do pedido + 3 imagens",
+          title: `Delicatto — texto do pedido + ${n} imagem(ns)`,
           text: texto,
           files,
         });
         return "ok-fotos";
       } catch (err) {
         if (err && err.name === "AbortError") return "cancelado";
-        showToast("Abrindo só o texto no WhatsApp; anexe as 3 fotos na conversa.", true);
+        showToast("Abrindo só o texto no WhatsApp; anexe as fotos na conversa se desejar.", true);
       }
     }
 
@@ -473,6 +492,9 @@ const form = document.getElementById("pedido-form");
       const f = document.getElementById(`foto${i}`).files[0];
       return f ? f.name : "—";
     });
+    const fotosResumo = nomeArquivos.every((n) => n === "—")
+      ? "Nenhuma (opcional)"
+      : nomeArquivos.join(" · ");
 
     const rows = [
       ["Produto", textoTipo(tipo)],
@@ -480,7 +502,7 @@ const form = document.getElementById("pedido-form");
       ["Frase — frente da caixa", fd.get("fraseTampa")],
       ["Destaque extra na frente da caixa", textoResumoExtra()],
       ["Frase — dentro da caixa", fd.get("fraseDentro")],
-      ["Fotos (nomes dos arquivos)", nomeArquivos.join(" · ")],
+      ["Fotos (nomes dos arquivos)", fotosResumo],
       ["Rua", fd.get("rua")],
       ["Número", fd.get("numero")],
       ["Bairro", fd.get("bairro")],
@@ -544,10 +566,7 @@ const form = document.getElementById("pedido-form");
 
     btnEnviar.disabled = true;
     try {
-      const f1 = document.getElementById("foto1").files[0];
-      const f2 = document.getElementById("foto2").files[0];
-      const f3 = document.getElementById("foto3").files[0];
-      ultimoFotosShare = f1 && f2 && f3 ? [f1, f2, f3] : null;
+      ultimoFotosShare = coletarArquivosFotosOrdenados();
 
       ultimoTextoWhatsapp = montarTextoWhatsappPedido();
 
@@ -558,16 +577,25 @@ const form = document.getElementById("pedido-form");
       if (resultado === "navegando") {
         return;
       }
+      const nFotosEnvio = ultimoFotosShare ? ultimoFotosShare.length : 0;
       finalizarPedidoAposEnvio();
       if (resultado === "ok-fotos") {
         showToast(
-          "No próximo passo, escolha o WhatsApp e o contato da loja (+55 21 99672-8473). O texto e as 3 imagens vão juntos no envio."
+          nFotosEnvio > 0
+            ? `No próximo passo, escolha o WhatsApp e o contato da loja (+55 21 99672-8473). O texto e ${nFotosEnvio} imagem(ns) vão juntos no envio.`
+            : "No próximo passo, escolha o WhatsApp e o contato da loja (+55 21 99672-8473)."
         );
       } else if (isMobileDispositivo()) {
-        showToast("WhatsApp aberto com o texto — anexe as 3 fotos se ainda não enviou.");
+        showToast(
+          nFotosEnvio > 0
+            ? "WhatsApp aberto com o texto — anexe mais fotos na conversa se ainda não enviou todas."
+            : "WhatsApp aberto com o texto do pedido."
+        );
       } else {
         showToast(
-          "Abrimos o WhatsApp Web com o texto do pedido. Anexe as 3 fotos na conversa (arrastar ou botão de clipe)."
+          nFotosEnvio > 0
+            ? "Abrimos o WhatsApp Web com o texto do pedido. Anexe as fotos na conversa (arrastar ou botão de clipe)."
+            : "Abrimos o WhatsApp Web com o texto do pedido."
         );
       }
     } catch (err) {
