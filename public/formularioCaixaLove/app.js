@@ -11,6 +11,7 @@ const form = document.getElementById("pedido-form");
   const actionsPrimary = document.getElementById("actions-primary");
   const bannerCompleta = document.getElementById("banner-completa");
   const bannerSem = document.getElementById("banner-sem");
+  const bannerPalhaLed = document.getElementById("banner-palha-led");
   const btnResumo = document.getElementById("btn-resumo");
   const panelResumo = document.getElementById("panel-resumo");
   const resumoConteudo = document.getElementById("resumo-conteudo");
@@ -18,6 +19,7 @@ const form = document.getElementById("pedido-form");
   const btnEnviar = document.getElementById("btn-enviar");
   const toast = document.getElementById("toast");
   const cepInput = document.getElementById("cep");
+  const ufInput = document.getElementById("uf");
   const cpfInput = document.getElementById("cpf");
   const tipoExtraTampa = document.getElementById("tipoExtraTampa");
   const wrapDataEspecial = document.getElementById("wrap-data-especial");
@@ -92,8 +94,55 @@ const form = document.getElementById("pedido-form");
     return d2 === parseInt(s[10], 10);
   }
 
+  let ultimoCepPreenchidoViaApi = "";
+  let cepDebounceTimer = null;
+
+  /** Consulta de CEP (serviço público). */
+  async function buscarEnderecoPorCep(digits) {
+    const ruaEl = document.getElementById("rua");
+    const bairroEl = document.getElementById("bairro");
+    const cidadeEl = document.getElementById("cidade");
+    const ufEl = document.getElementById("uf");
+    cepInput.setAttribute("aria-busy", "true");
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+      if (!res.ok) throw new Error("http");
+      const data = await res.json();
+      if (data.erro) {
+        ultimoCepPreenchidoViaApi = "";
+        showToast("CEP não encontrado. Confira os números ou preencha o endereço manualmente.", true);
+        return;
+      }
+      ultimoCepPreenchidoViaApi = digits;
+      if (data.logradouro) ruaEl.value = data.logradouro;
+      if (data.bairro) bairroEl.value = data.bairro;
+      if (data.localidade) cidadeEl.value = data.localidade;
+      if (data.uf) ufEl.value = String(data.uf).toUpperCase().slice(0, 2);
+      clearFieldErrors();
+    } catch (_e) {
+      ultimoCepPreenchidoViaApi = "";
+      showToast("Não foi possível consultar o CEP. Preencha o endereço manualmente.", true);
+    } finally {
+      cepInput.removeAttribute("aria-busy");
+    }
+  }
+
   cepInput.addEventListener("input", () => {
     cepInput.value = formatCep(cepInput.value);
+    const d = onlyDigits(cepInput.value);
+    clearTimeout(cepDebounceTimer);
+    if (d.length !== 8) {
+      ultimoCepPreenchidoViaApi = "";
+      return;
+    }
+    cepDebounceTimer = setTimeout(() => {
+      if (d === ultimoCepPreenchidoViaApi) return;
+      buscarEnderecoPorCep(d);
+    }, 450);
+  });
+
+  ufInput.addEventListener("input", () => {
+    ufInput.value = ufInput.value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 2);
   });
 
   cpfInput.addEventListener("input", () => {
@@ -114,6 +163,7 @@ const form = document.getElementById("pedido-form");
 
     bannerCompleta.classList.toggle("hidden", !mostrar || tipo !== "completa");
     bannerSem.classList.toggle("hidden", !mostrar || tipo !== "sem-chocolate");
+    bannerPalhaLed.classList.toggle("hidden", !mostrar || tipo !== "sem-chocolate-palha-led");
   }
 
   tipoInputs.forEach((input) => {
@@ -212,6 +262,18 @@ const form = document.getElementById("pedido-form");
       markError("bairro");
     }
 
+    const cidade = document.getElementById("cidade").value.trim();
+    if (cidade.length < 2) {
+      erros.push("Informe a cidade.");
+      markError("cidade");
+    }
+
+    const uf = document.getElementById("uf").value.trim();
+    if (uf.length !== 2) {
+      erros.push("Informe a UF com 2 letras.");
+      markError("uf");
+    }
+
     const cep = onlyDigits(document.getElementById("cep").value);
     if (cep.length !== 8) {
       erros.push("CEP inválido.");
@@ -235,7 +297,8 @@ const form = document.getElementById("pedido-form");
 
   function textoTipo(tipo) {
     if (tipo === "completa") return "Caixa Love COMPLETA (chocolate, palha e LED)";
-    return "Caixa Love SEM chocolate";
+    if (tipo === "sem-chocolate-palha-led") return "Caixa Love SEM chocolate e com palha e LED";
+    return "Caixa Love SEM chocolate e SEM palha e LED";
   }
 
   function textoResumoExtra() {
@@ -274,6 +337,7 @@ const form = document.getElementById("pedido-form");
     t += `Rua: ${document.getElementById("rua").value.trim()}\n`;
     t += `Número: ${document.getElementById("numero").value.trim()}\n`;
     t += `Bairro: ${document.getElementById("bairro").value.trim()}\n`;
+    t += `Cidade: ${document.getElementById("cidade").value.trim()} — ${document.getElementById("uf").value.trim().toUpperCase()}\n`;
     t += `CEP: ${cepFmt}\n`;
     t += `Referência: ${document.getElementById("referencia").value.trim() || "—"}\n`;
     t += "\n*Cliente*\n";
@@ -343,6 +407,7 @@ const form = document.getElementById("pedido-form");
     resumoAberto = false;
     panelResumo.classList.add("hidden");
     form.reset();
+    ultimoCepPreenchidoViaApi = "";
     atualizarExtraTampa();
     atualizarVisibilidadeProduto();
     ultimoTextoWhatsapp = "";
@@ -412,6 +477,7 @@ const form = document.getElementById("pedido-form");
       ["Rua", fd.get("rua")],
       ["Número", fd.get("numero")],
       ["Bairro", fd.get("bairro")],
+      ["Cidade / UF", `${fd.get("cidade")} — ${String(fd.get("uf") || "").toUpperCase()}`],
       ["CEP", cepFmt],
       ["Referência", fd.get("referencia")?.trim() || "—"],
       ["Nome", fd.get("nomeCompleto")],

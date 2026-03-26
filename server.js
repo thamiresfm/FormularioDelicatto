@@ -190,6 +190,7 @@ async function buildDocxBuffer(body, tipoLabel, arquivosFotos) {
     line(`Rua: ${body.rua || ""}`),
     line(`Número: ${body.numero || ""}`),
     line(`Bairro: ${body.bairro || ""}`),
+    line(`Cidade / UF: ${body.cidade || ""} — ${body.uf || ""}`),
     line(`CEP: ${body.cep || ""}`),
     line(`Ponto de referência: ${body.referencia || ""}`),
     line(""),
@@ -223,7 +224,13 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.get("/formularioDoProduto", (_req, res) => {
-  res.redirect(301, "/formularioDoProduto/");
+  res.redirect(301, "/formularioCaixaLove/");
+});
+app.get("/formularioDoProduto/", (_req, res) => {
+  res.redirect(301, "/formularioCaixaLove/");
+});
+app.get("/formularioCaixaLove", (_req, res) => {
+  res.redirect(301, "/formularioCaixaLove/");
 });
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -258,6 +265,8 @@ app.post("/api/pedido", fieldsUpload, async (req, res) => {
       rua,
       numero,
       bairro,
+      cidade,
+      uf,
       cep,
       referencia,
       nomeCompleto,
@@ -272,7 +281,10 @@ app.post("/api/pedido", fieldsUpload, async (req, res) => {
       errors.push("Opção de personalização extra inválida.");
     }
 
-    if (!tipoProduto || !["sem-chocolate", "completa"].includes(tipoProduto)) {
+    if (
+      !tipoProduto ||
+      !["sem-chocolate", "sem-chocolate-palha-led", "completa"].includes(tipoProduto)
+    ) {
       errors.push("Selecione o tipo de produto.");
     }
     const fraseTampaTrim = String(fraseTampa || "").trim();
@@ -311,6 +323,12 @@ app.post("/api/pedido", fieldsUpload, async (req, res) => {
     if (!rua || String(rua).trim().length < 2) errors.push("Informe a rua.");
     if (!numero || String(numero).trim().length < 1) errors.push("Informe o número.");
     if (!bairro || String(bairro).trim().length < 2) errors.push("Informe o bairro.");
+    if (!cidade || String(cidade).trim().length < 2) errors.push("Informe a cidade.");
+    const ufTrim = String(uf || "")
+      .trim()
+      .replace(/[^a-zA-Z]/g, "")
+      .toUpperCase();
+    if (ufTrim.length !== 2) errors.push("Informe a UF com 2 letras.");
     const cepDigits = String(cep || "").replace(/\D/g, "");
     if (cepDigits.length !== 8) errors.push("CEP inválido (use 8 dígitos).");
     if (!nomeCompleto || String(nomeCompleto).trim().split(/\s+/).length < 2) {
@@ -329,7 +347,9 @@ app.post("/api/pedido", fieldsUpload, async (req, res) => {
     const tipoLabel =
       tipoProduto === "completa"
         ? "Caixa Love COMPLETA (com chocolate, palha e LED)"
-        : "Caixa Love SEM chocolate";
+        : tipoProduto === "sem-chocolate-palha-led"
+          ? "Caixa Love SEM chocolate e com palha e LED"
+          : "Caixa Love SEM chocolate e SEM palha e LED";
 
     let buffer;
     try {
@@ -339,6 +359,8 @@ app.post("/api/pedido", fieldsUpload, async (req, res) => {
           pagamentoConfirmado: "true",
           fraseTampa: fraseTampaTrim,
           fraseDentro: fraseDentroTrim,
+          cidade: String(cidade).trim(),
+          uf: ufTrim,
           cpf: cpfDigits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4"),
           cep: cepDigits.replace(/(\d{5})(\d{3})/, "$1-$2"),
         },

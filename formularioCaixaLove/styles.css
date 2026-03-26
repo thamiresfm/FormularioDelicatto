@@ -171,6 +171,11 @@ body {
   border-color: rgba(122, 92, 67, 0.28);
 }
 
+.info-banner--soft {
+  background: rgba(122, 92, 67, 0.06);
+  border-color: rgba(122, 92, 67, 0.2);
+}
+
 .status-pago {
   margin: 0 0 1.25rem;
   padding: 0.85rem 1rem;
@@ -285,6 +290,17 @@ textarea.field-error {
   font-size: 0.88rem;
   color: var(--ink-muted);
 }
+
+.field-cep-primeiro {
+  display: block;
+  margin: 0 0 0.5rem;
+  max-width: 11.5rem;
+}
+
+.cep-hint {
+  margin: 0 0 1rem;
+}
+
 
 .hint-inline {
   font-weight: 400;

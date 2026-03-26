@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "sync-pages": "mkdir -p formularioDoProduto/assets && cp -f public/formularioDoProduto/index.html public/formularioDoProduto/app.js public/formularioDoProduto/styles.css formularioDoProduto/ && cp -f public/formularioDoProduto/assets/logo-delicatto.png formularioDoProduto/assets/ && cp -f public/index.html . && rm -f app.js styles.css && rm -rf assets && touch .nojekyll"
+    "sync-pages": "rm -rf formularioDoProduto && mkdir -p formularioCaixaLove/assets formularioDoProduto && cp -f public/formularioCaixaLove/index.html public/formularioCaixaLove/app.js public/formularioCaixaLove/styles.css formularioCaixaLove/ && cp -f public/formularioCaixaLove/assets/logo-delicatto.png formularioCaixaLove/assets/ && cp -f public/formularioDoProduto/index.html formularioDoProduto/ && cp -f public/index.html . && rm -f app.js styles.css && rm -rf assets && touch .nojekyll"
   },
   "engines": {
     "node": ">=18"
