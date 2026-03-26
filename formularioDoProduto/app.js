@@ -263,9 +263,7 @@ const form = document.getElementById("pedido-form");
       })
       .filter(Boolean)
       .join(", ");
-    let t =
-      "📱 *Como enviar:* toque em Compartilhar → WhatsApp → *selecione o contato* da loja (Delicatto +55 21 99672-8473). *O texto do pedido e as 3 imagens (fotos) serão enviados no mesmo envio.*\n\n";
-    t += "*Delicatto Personalizados — novo pedido*\n\n";
+    let t = "*Delicatto Personalizados — novo pedido*\n\n";
     t += `Produto: ${textoTipo(tipo)}\n`;
     t += "Pagamento: confirmado\n";
     t += `Frase frente da caixa: ${document.getElementById("fraseTampa").value.trim()}\n`;
@@ -281,8 +279,6 @@ const form = document.getElementById("pedido-form");
     t += "\n*Cliente*\n";
     t += `Nome: ${document.getElementById("nomeCompleto").value.trim()}\n`;
     t += `CPF: ${formatCpf(document.getElementById("cpf").value)}\n`;
-    t +=
-      "\n— WhatsApp da loja: +55 21 99672-8473. *As 3 imagens também vão em anexo* (mesmo envio que este texto) quando o celular/navegador permitir compartilhar com arquivos.\n";
     return t;
   }
 

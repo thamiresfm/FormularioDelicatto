@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "sync-pages": "mkdir -p assets && cp -f public/index.html public/app.js public/styles.css . && cp -f public/assets/logo-delicatto.png assets/ && touch .nojekyll"
+    "sync-pages": "mkdir -p formularioDoProduto/assets && cp -f public/formularioDoProduto/index.html public/formularioDoProduto/app.js public/formularioDoProduto/styles.css formularioDoProduto/ && cp -f public/formularioDoProduto/assets/logo-delicatto.png formularioDoProduto/assets/ && cp -f public/index.html . && rm -f app.js styles.css && rm -rf assets && touch .nojekyll"
   },
   "engines": {
     "node": ">=18"

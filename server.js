@@ -222,6 +222,9 @@ app.use(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.get("/formularioDoProduto", (_req, res) => {
+  res.redirect(301, "/formularioDoProduto/");
+});
 app.use(express.static(path.join(__dirname, "public")));
 
 const fieldsUpload = upload.fields([
