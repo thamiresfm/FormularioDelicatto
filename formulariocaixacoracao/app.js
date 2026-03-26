@@ -412,6 +412,65 @@ function finalizarPedidoAposEnvio() {
   ultimoFotosShare = null;
 }
 
+/**
+ * O 2º navigator.share() precisa de novo gesto do usuário (requisito dos navegadores).
+ * Abre modal com botão que dispara o compartilhamento das outras 5 fotos.
+ */
+function aguardarSharePasso2(outrasFiles) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById("modal-share-passo2");
+    const btnOk = document.getElementById("btn-share-outras-fotos");
+    const btnCancel = document.getElementById("btn-share-passo2-cancelar");
+    if (!modal || !btnOk || !btnCancel) {
+      showToast("Não foi possível mostrar o passo 2. Anexe as outras 5 fotos manualmente no WhatsApp.", true);
+      resolve("ok-fotos-duplo-parcial");
+      return;
+    }
+
+    const fechar = () => {
+      modal.classList.add("hidden");
+    };
+
+    const onOk = async () => {
+      btnOk.removeEventListener("click", onOk);
+      btnCancel.removeEventListener("click", onCancel);
+      try {
+        await navigator.share({
+          title: "Delicatto — Outras 5 fotos",
+          text: "Outras 5 fotos do mesmo pedido (Caixa Surpresa Coração).",
+          files: outrasFiles,
+        });
+        fechar();
+        resolve("ok-fotos-duplo");
+      } catch (err) {
+        fechar();
+        if (err && err.name === "AbortError") {
+          resolve("cancelado");
+        } else {
+          showToast(
+            "Não foi possível compartilhar as 5 fotos; anexe-as manualmente na mesma conversa do WhatsApp.",
+            true
+          );
+          resolve("ok-fotos-duplo-parcial");
+        }
+      }
+    };
+
+    const onCancel = () => {
+      btnOk.removeEventListener("click", onOk);
+      btnCancel.removeEventListener("click", onCancel);
+      fechar();
+      showToast("Envie as outras 5 fotos manualmente na mesma conversa do WhatsApp.", true);
+      resolve("ok-fotos-duplo-parcial");
+    };
+
+    modal.classList.remove("hidden");
+    btnOk.addEventListener("click", onOk);
+    btnCancel.addEventListener("click", onCancel);
+    setTimeout(() => btnOk.focus(), 100);
+  });
+}
+
 async function enviarPedidoWhatsappAgora() {
   const texto = ultimoTextoWhatsapp;
   const files = ultimoFotosShare;
@@ -445,41 +504,24 @@ async function enviarPedidoWhatsappAgora() {
           primeiraEtapaOk = true;
         } catch (err) {
           if (err && err.name === "AbortError") return "cancelado";
-          if (!mobile) {
-            try {
-              await navigator.share({
-                title: "Delicatto — Caixa Surpresa Coração — texto + 6 imagens",
-                text: texto,
-                files,
-              });
-              return "ok-fotos";
-            } catch (err2) {
-              if (err2 && err2.name === "AbortError") return "cancelado";
-              showToast("Abrindo só o texto no WhatsApp; anexe as 6 fotos na conversa.", true);
-            }
-          } else {
-            showToast(
-              "Não foi possível compartilhar só a foto principal. Abrindo o WhatsApp com o texto do pedido — anexe as fotos na conversa.",
-              true
-            );
-          }
-        }
-        if (primeiraEtapaOk) {
           try {
             await navigator.share({
-              title: "Delicatto — Outras 5 fotos",
-              text: "Outras 5 fotos do mesmo pedido (Caixa Surpresa Coração).",
-              files: outrasFiles,
+              text: `Foto principal\n\n${texto}`,
+              files: [principalFile],
             });
-            return "ok-fotos-duplo";
-          } catch (err) {
-            if (err && err.name === "AbortError") return "cancelado";
-            showToast(
-              "A foto principal já foi compartilhada; anexe as outras 5 fotos na mesma conversa do WhatsApp.",
-              true
-            );
-            return "ok-fotos-duplo-parcial";
+            primeiraEtapaOk = true;
+          } catch (errAlt) {
+            if (errAlt && errAlt.name === "AbortError") return "cancelado";
           }
+        }
+        if (!primeiraEtapaOk) {
+          showToast(
+            "Não foi possível compartilhar só a foto principal. Abrindo o WhatsApp com o texto do pedido — anexe as fotos na conversa.",
+            true
+          );
+        }
+        if (primeiraEtapaOk) {
+          return await aguardarSharePasso2(outrasFiles);
         }
       }
     }
