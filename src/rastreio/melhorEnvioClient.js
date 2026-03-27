@@ -337,10 +337,10 @@ async function obterAccessToken() {
 }
 
 /**
- * Busca dados do envio/etiqueta no Melhor Envio pelo ID interno do ME.
+ * Busca dados da etiqueta no Melhor Envio pelo ID retornado em orders/search.
  *
- * Endpoint de referência (API v2): GET /api/v2/me/shipment/{id}
- * Se a documentação atual indicar outro path, altere apenas aqui.
+ * Doc ME: GET /api/v2/me/orders/{id} — id da order correspondente à etiqueta.
+ * @see https://docs.melhorenvio.com.br/reference/listar-informacoes-de-uma-etiqueta
  */
 async function buscarEnvioPorId(shipmentId) {
   const token = await obterAccessToken();
@@ -348,6 +348,7 @@ async function buscarEnvioPorId(shipmentId) {
   const id = encodeURIComponent(String(shipmentId).trim());
 
   const candidatos = [
+    `${base}/api/v2/me/orders/${id}`,
     `${base}/api/v2/me/shipment/${id}`,
     `${base}/api/v2/me/shipments/${id}`,
   ];
@@ -359,12 +360,13 @@ async function buscarEnvioPorId(shipmentId) {
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: "application/json",
+        "Content-Type": "application/json",
         "User-Agent": userAgentMelhorEnvio(),
       },
     });
     const bodyText = await res.text();
     if (res.ok) {
-      return jsonOuErroMe(bodyText, `shipment ${id}`);
+      return jsonOuErroMe(bodyText, `orders/${id}`);
     }
     if (corpoEhPaginaHtml(bodyText)) {
       throw erroRespostaHtmlEmVezDeJson();
@@ -391,6 +393,7 @@ async function pesquisarPedidosPorTermo(q) {
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: "application/json",
+      "Content-Type": "application/json",
       "User-Agent": userAgentMelhorEnvio(),
     },
   });

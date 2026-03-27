@@ -132,7 +132,8 @@ async function consultarPublicoDiretoMelhorEnvio(codigoLimpo) {
     if (!match?.id) {
       return { resultado: "nao_encontrado" };
     }
-    const raw = await buscarEnvioPorId(match.id);
+    // A doc ME: orders/search já devolve o mesmo payload de GET /api/v2/me/orders/{id}.
+    const raw = match;
     return { resultado: "ok", dto: montarDtoPublicoDesdePayloadMe(raw, codigoLimpo) };
   } catch (e) {
     console.error("[rastreio] consulta direta ME:", e.message);
@@ -169,8 +170,23 @@ function mensagemPublicaErroIntegracaoMe(mensagemInterna) {
   if (/pesquisa falhou/i.test(m)) {
     return "A pesquisa no Melhor Envio falhou. Verifique ME_API_BASE e se o token ainda é válido.";
   }
+  if (/não foi possível buscar envio|buscar envio/i.test(m)) {
+    if (/\(404\)|\b404\b|not found/i.test(m)) {
+      return "O Melhor Envio não encontrou os detalhes desse envio (404). Confira o código ou tente de novo; se persistir, fale com a loja.";
+    }
+    return "Não foi possível obter os detalhes do envio no Melhor Envio. Tente de novo em instantes ou fale com a loja.";
+  }
+  if (/corpo não é JSON/i.test(m)) {
+    return "A API do Melhor Envio devolveu um formato inesperado. Confira ME_API_BASE (https://www.melhorenvio.com.br) e o token.";
+  }
+  if (/configure ME_PANEL_ACCESS_TOKEN|ME_CLIENT_ID \+ ME_CLIENT_SECRET/i.test(m)) {
+    return "Integração Melhor Envio não configurada no servidor. Defina ME_PANEL_ACCESS_TOKEN (JWT do painel) no Render.";
+  }
   if (/OAuth falhou/i.test(m) && /invalid|revoked|expired|invalid_grant|400/i.test(m)) {
     return "Sessão OAuth do Melhor Envio inválida ou expirada. Refaça o OAuth ou atualize ME_REFRESH_TOKEN no Render.";
+  }
+  if (/\(5\d\d\)|\b502\b|\b503\b|Bad Gateway|Service Unavailable/i.test(m)) {
+    return "O Melhor Envio está temporariamente indisponível. Tente de novo em alguns minutos.";
   }
   return "Não foi possível consultar o Melhor Envio no momento. Tente de novo em instantes ou fale com a loja.";
 }
