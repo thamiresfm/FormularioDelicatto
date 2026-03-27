@@ -39,12 +39,21 @@ O código já lê `ME_CLIENT_ID`, `ME_CLIENT_SECRET` e `ME_OAUTH_REDIRECT_URI` e
 
 **Para o OAuth funcionar de verdade:** o servidor Node que recebe `GET /oauth/callback?code=...` precisa ter as mesmas três variáveis configuradas no **hosting do Node** (Render, VPS, Railway, etc.) ou no `.env` local — **igual** ao redirect cadastrado no app do Melhor Envio (ex.: `https://delicattopersonalizados.com.br/oauth/callback`, sem barra final). O domínio do callback deve apontar para esse Node, não só para o GitHub Pages.
 
+## Render (Web Service)
+
+- **Build:** `npm install` (o script `postinstall` executa `prisma generate`). O pacote **`prisma` está em `dependencies`** para o Render instalar em produção (antes, só em `devDependencies`, o build falhava ou o serviço não subia).
+- **Start:** `npm start` ou `node server.js`.
+- **Variáveis:** `ME_CLIENT_ID`, `ME_CLIENT_SECRET`, `ME_OAUTH_REDIRECT_URI`, `ME_API_BASE`, etc. têm de estar no **painel Environment do Render** — secrets do GitHub **não** são aplicados sozinhos.
+- **Plano free:** o serviço “dorme”; o primeiro acesso pode levar **~1 minuto** a responder.
+- **Teste rápido:** abrir `GET …/api/rastreio/health` (deve devolver JSON com `ok: true`).
+
 ## Problemas comuns
 
 | Situação | O que fazer |
 |----------|-------------|
 | Site desatualizado no ar | `npm run sync-pages`, commit e push. |
 | Rastreio: **405** ao consultar | O domínio está a servir só estático (ex.: Pages). Defina **`delicatto-api-base`** no `public/rastreios/index.html` com a URL do backend Node, ou aponte o DNS/proxy para o servidor onde corre `npm start`. |
+| **Render** não abre / deploy falhou | Ver **Logs** no painel. Confirme **Build Command** `npm install` e que o build mostra `prisma generate`. Variáveis **`ME_*`** no Render (não `NE_*`). |
 | WhatsApp não abre (app interno) | Abrir o site no **Safari** ou **Chrome**. |
 
 ---
