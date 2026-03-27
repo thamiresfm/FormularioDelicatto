@@ -1,7 +1,8 @@
 /**
- * Base da API: meta delicatto-api-base; se vazio, mesma origem.
- * Fallback: domínio delicattopersonalizados.com.br (GitHub Pages) → API no Render (evita POST 405 na origem estática).
- * Se a API passar a rodar no mesmo domínio, defina a meta com a URL completa (ex.: https://delicattopersonalizados.com.br).
+ * Base da API: meta delicatto-api-base.
+ * No domínio delicattopersonalizados.com.br o site costuma ser só GitHub Pages: POST em /api/* dá 405.
+ * Se a meta estiver vazia OU apontar para o mesmo host do site (Pages), usamos a API no Render.
+ * Para API no mesmo domínio com Node de verdade, use subdomínio (ex.: https://api.delicattopersonalizados.com.br).
  */
 const API_BASE_RENDER = "https://formulariodelicatto.onrender.com";
 
@@ -9,11 +10,18 @@ function urlApiConsultar() {
   const meta = document.querySelector('meta[name="delicatto-api-base"]');
   let base = (meta?.getAttribute("content") || "").trim().replace(/\/$/, "");
   const host = window.location.hostname;
-  if (!base) {
-    if (host === "delicattopersonalizados.com.br" || host === "www.delicattopersonalizados.com.br") {
-      base = API_BASE_RENDER;
-    }
+  const naLoja =
+    host === "delicattopersonalizados.com.br" || host === "www.delicattopersonalizados.com.br";
+
+  const metaIgualAoSiteEstatico =
+    !base ||
+    base === window.location.origin ||
+    /^https?:\/\/(www\.)?delicattopersonalizados\.com\.br$/i.test(base);
+
+  if (naLoja && metaIgualAoSiteEstatico) {
+    base = API_BASE_RENDER;
   }
+
   return `${base}/api/rastreio/consultar`;
 }
 
