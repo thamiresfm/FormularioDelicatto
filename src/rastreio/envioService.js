@@ -67,27 +67,13 @@ async function buscarEnvioPorCodigoPublicoCompat(codigoLimpo) {
 }
 
 async function credenciaisMelhorEnvioConfiguradas() {
-  const panel = envStr("ME_PANEL_ACCESS_TOKEN");
-  if (panel.length > 0) return true;
-  const clientId = envStr("ME_CLIENT_ID");
-  const clientSecret = envStr("ME_CLIENT_SECRET");
-  if (!clientId || !clientSecret) return false;
-  if (envStr("ME_REFRESH_TOKEN").length > 0) return true;
-  if (rastreioSemBanco() || !prisma) return false;
-  const row = await prisma.integrationToken.findUnique({
-    where: { id: "melhor_envio" },
-    select: { refreshToken: true },
-  });
-  return Boolean(row?.refreshToken && String(row.refreshToken).trim());
+  return envStr("ME_PANEL_ACCESS_TOKEN").length > 0;
 }
 
 /** Só para diagnóstico (GET /health): indica se cada chave ME_* tem valor não vazio, sem revelar segredos. */
 function flagsEnvMelhorEnvioPublico() {
   return {
     temME_PANEL_ACCESS_TOKEN: envStr("ME_PANEL_ACCESS_TOKEN").length > 0,
-    temME_CLIENT_ID: envStr("ME_CLIENT_ID").length > 0,
-    temME_CLIENT_SECRET: envStr("ME_CLIENT_SECRET").length > 0,
-    temME_REFRESH_TOKEN: envStr("ME_REFRESH_TOKEN").length > 0,
   };
 }
 
@@ -179,7 +165,7 @@ function mensagemPublicaErroIntegracaoMe(mensagemInterna) {
     return "O JWT do painel Melhor Envio expirou. Gere um novo em Permissões de acesso no painel ME e atualize ME_PANEL_ACCESS_TOKEN no Render.";
   }
   if (/\(401\)|\b401\b|Unauthorized/i.test(m)) {
-    return "O Melhor Envio recusou o token (401). Atualize ME_REFRESH_TOKEN ou ME_PANEL_ACCESS_TOKEN no Render e confira ME_CLIENT_ID / ME_CLIENT_SECRET.";
+    return "O Melhor Envio recusou o token (401). Gere um novo JWT em Permissões de acesso no painel ME e atualize ME_PANEL_ACCESS_TOKEN no servidor; confira ME_API_BASE (produção vs sandbox).";
   }
   if (/\(403\)|\b403\b|Forbidden/i.test(m)) {
     return "Acesso negado pela API Melhor Envio (403). Confira escopos do aplicativo e se ME_API_BASE é o mesmo ambiente da conta (produção vs sandbox).";
@@ -208,20 +194,8 @@ function mensagemPublicaErroIntegracaoMe(mensagemInterna) {
       "Confira ME_API_BASE (https://www.melhorenvio.com.br com www), ME_PANEL_ACCESS_TOKEN e RASTREIO_DEBUG_ME=1 para ver o detalhe técnico."
     );
   }
-  if (/configure ME_PANEL_ACCESS_TOKEN|ME_CLIENT_ID \+ ME_CLIENT_SECRET/i.test(m)) {
-    return "Integração Melhor Envio não configurada no servidor. Defina ME_PANEL_ACCESS_TOKEN (JWT do painel) no Render.";
-  }
-  if (/Client invalid|invalid_client/i.test(m)) {
-    return (
-      "OAuth Melhor Envio: Client invalid — a URL de callback tem de ser idêntica à cadastrada no app ME. " +
-      "Confira ME_OAUTH_REDIRECT_URI no servidor (https, domínio, caminho, sem barra extra) e o painel do aplicativo."
-    );
-  }
-  if (/OAuth falhou/i.test(m) && /invalid|revoked|expired|invalid_grant|400/i.test(m)) {
-    return "Sessão OAuth do Melhor Envio inválida ou expirada. Refaça o OAuth ou atualize ME_REFRESH_TOKEN no Render.";
-  }
-  if (/OAuth falhou|Melhor Envio OAuth/i.test(m)) {
-    return "A autenticação OAuth do Melhor Envio falhou. Prefira ME_PANEL_ACCESS_TOKEN (JWT em Permissões de acesso) ou atualize ME_REFRESH_TOKEN no servidor.";
+  if (/defina ME_PANEL_ACCESS_TOKEN|configure ME_PANEL_ACCESS_TOKEN/i.test(m)) {
+    return "Integração Melhor Envio não configurada no servidor. Defina ME_PANEL_ACCESS_TOKEN (JWT em Permissões de acesso no painel ME) no Render.";
   }
   if (/\(5\d\d\)|\b502\b|\b503\b|Bad Gateway|Service Unavailable/i.test(m)) {
     return "O Melhor Envio está temporariamente indisponível. Tente de novo em alguns minutos.";
@@ -243,7 +217,7 @@ function mensagemPublicaErroIntegracaoMe(mensagemInterna) {
     if (st) {
       const code = st[1];
       if (code === "401") {
-        return "O Melhor Envio recusou o token (401). Atualize ME_PANEL_ACCESS_TOKEN no painel ME (Permissões de acesso) ou confira OAuth.";
+        return "O Melhor Envio recusou o token (401). Atualize ME_PANEL_ACCESS_TOKEN (novo JWT em Permissões de acesso) e confira ME_API_BASE.";
       }
       if (code === "403") {
         return "Acesso negado pelo Melhor Envio (403). Confira escopos do JWT e se ME_API_BASE é produção ou sandbox conforme a conta.";

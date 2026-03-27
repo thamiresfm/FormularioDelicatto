@@ -15,13 +15,13 @@
 
 [Prisma ORM] ──► SQLite (dev) ou PostgreSQL (produção)
 
-[Melhor Envio API] ◄── OAuth2 refresh_token (somente backend)
+[Melhor Envio API] ◄── JWT do painel (ME_PANEL_ACCESS_TOKEN, somente backend)
        documentação: https://docs.melhorenvio.com.br/
 ```
 
 - **Frontend** (`public/rastreios/`): HTML/CSS/JS vanilla; chama apenas rotas `/api/rastreio/*` no mesmo domínio.
 - **Backend**: toda chamada à API Melhor Envio fica em `src/rastreio/melhorEnvioClient.js` (fácil ajustar endpoints).
-- **Segredos**: `ME_CLIENT_ID`, `ME_CLIENT_SECRET`, `ME_REFRESH_TOKEN`, `RASTREIO_ADMIN_TOKEN`, `ME_WEBHOOK_SECRET` apenas no `.env` (nunca no Git).
+- **Segredos**: `ME_PANEL_ACCESS_TOKEN`, `ME_API_BASE`, `RASTREIO_ADMIN_TOKEN`, `ME_WEBHOOK_SECRET` apenas no `.env` (nunca no Git).
 
 ## 2. Modelagem de dados (Prisma)
 
@@ -31,7 +31,7 @@
 | `Pedido`           | Código interno único, título, vínculo opcional com cliente |
 | `Envio`            | `codigoRastreio` (público), `melhorEnvioShipmentId` (UUID ME), status, transportadora, datas |
 | `TrackingEvent`    | Histórico de eventos (sync API ou webhook) |
-| `IntegrationToken` | Cache opcional do access token OAuth |
+| `IntegrationToken` | Legado (cache de token); o fluxo atual usa só `ME_PANEL_ACCESS_TOKEN` |
 | `WebhookLog`       | Auditoria de POSTs recebidos |
 
 Ver `prisma/schema.prisma`.
@@ -64,13 +64,12 @@ docs/
 
 ## 4. Fluxo Melhor Envio
 
-1. No painel Melhor Envio, crie um **aplicativo** e obtenha `client_id` / `client_secret`.
-2. Complete o fluxo OAuth (autorização do usuário lojista) e guarde o **refresh_token** (válido para renovar `access_token`).
-3. Preencha `.env` com `ME_*`.
-4. No painel `/rastreios/admin/`, cadastre **pedido** e **envio** com:
+1. No painel Melhor Envio, em **Permissões de acesso**, gere um **JWT** e copie para `ME_PANEL_ACCESS_TOKEN` no `.env` (junto com `ME_API_BASE`).
+2. Quando o JWT expirar, gere outro no painel e atualize a variável.
+3. No painel `/rastreios/admin/`, cadastre **pedido** e **envio** com:
    - `codigoRastreio`: o que o cliente digita.
    - `melhorEnvioShipmentId`: ID do envio no ME (necessário para `buscarEnvioPorId` em `melhorEnvioClient.js`).
-5. Consulta pública: o backend busca o envio local, chama a API ME, atualiza banco e devolve JSON para a página.
+4. Consulta pública: o backend busca o envio local, chama a API ME, atualiza banco e devolve JSON para a página.
 
 **Endpoints HTTP Melhor Envio** estão centralizados em `melhorEnvioClient.js` (inclui URLs candidatas). Se a documentação oficial indicar outro path, altere só esse arquivo.
 

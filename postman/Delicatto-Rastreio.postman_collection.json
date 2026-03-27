@@ -11,10 +11,7 @@
     { "key": "codigoRastreio", "value": "888030625436252" },
     { "key": "envioId", "value": "" },
     { "key": "me_base", "value": "https://www.melhorenvio.com.br" },
-    { "key": "me_panel_access_token", "value": "" },
-    { "key": "me_client_id", "value": "" },
-    { "key": "me_client_secret", "value": "" },
-    { "key": "me_refresh_token", "value": "" }
+    { "key": "me_panel_access_token", "value": "" }
   ],
   "item": [
     {
@@ -144,23 +141,6 @@
     {
       "name": "Melhor Envio (API externa)",
       "item": [
-        {
-          "name": "OAuth — refresh token (desativado)",
-          "disabled": true,
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Accept", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"grant_type\": \"refresh_token\",\n  \"client_id\": \"{{me_client_id}}\",\n  \"client_secret\": \"{{me_client_secret}}\",\n  \"refresh_token\": \"{{me_refresh_token}}\"\n}"
-            },
-            "url": "{{me_base}}/oauth/token",
-            "description": "Desativado: fluxo atual usa ME_PANEL_ACCESS_TOKEN no request orders/search."
-          }
-        },
         {
           "name": "Pesquisar pedidos — orders/search (ME_PANEL_ACCESS_TOKEN)",
           "request": {

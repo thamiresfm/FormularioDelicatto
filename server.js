@@ -30,11 +30,6 @@ app.set("trust proxy", 1);
 
 const { registrarWebhookMelhorEnvio, registrarRotasRastreio } = require("./src/rastreio/apiRoutes");
 const { iniciarPollingMelhorEnvio } = require("./src/rastreio/syncScheduler");
-const {
-  montarUrlAutorizacaoOAuth,
-  trocarAuthorizationCodePorTokens,
-  persistirTokensOAuthResposta,
-} = require("./src/rastreio/melhorEnvioClient");
 
 /** Webhook ME precisa de body raw — registrar antes do express.json() global */
 registrarWebhookMelhorEnvio(app);
@@ -244,70 +239,6 @@ app.use(express.urlencoded({ extended: true }));
 
 /** Rotas /api/rastreio/* (usa JSON já parseado pelo middleware acima) */
 registrarRotasRastreio(app);
-
-/**
- * Inicia OAuth no navegador: redireciona para login Melhor Envio.
- * Depois o ME redireciona para ME_OAUTH_REDIRECT_URI (ex.: /oauth/callback?code=...).
- * O code expira em poucos minutos e é de uso único.
- */
-app.get("/oauth/melhor-envio/iniciar", (req, res) => {
-  try {
-    const url = montarUrlAutorizacaoOAuth();
-    res.redirect(302, url);
-  } catch (e) {
-    console.error("[oauth] iniciar:", e);
-    res.status(500).type("html").send(
-      `<!DOCTYPE html><html><head><meta charset="utf-8"><title>OAuth</title></head><body><p>Erro ao montar URL de autorização.</p><pre>${String(
-        e.message || e
-      )}</pre></body></html>`
-    );
-  }
-});
-
-/** Melhor Envio OAuth — ME_OAUTH_REDIRECT_URI tem de ser idêntica ao callback do app ME (senão Client invalid). */
-app.get("/oauth/callback", async (req, res) => {
-  if (req.query.error) {
-    const desc = String(req.query.error_description || "");
-    return res.status(400).type("html")
-      .send(`<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><h1>OAuth negado</h1><p>${String(
-        req.query.error
-      )}</p><p>${desc}</p></body></html>`);
-  }
-
-  const code = req.query.code;
-  if (!code) {
-    return res.status(400).type("html").send("<!DOCTYPE html><html><body><p>Parâmetro <code>code</code> ausente.</p></body></html>");
-  }
-
-  try {
-    const data = await trocarAuthorizationCodePorTokens(code);
-    await persistirTokensOAuthResposta(data);
-    if (process.env.NODE_ENV === "development") {
-      const onde = rastreioSemBanco() ? "cache (sem Prisma)" : "Prisma + cache";
-      console.log(`[oauth] Tokens OAuth armazenados (${onde}). refresh_token length:`, String(data.refresh_token || "").length);
-    }
-    const blocoPersistencia = rastreioSemBanco()
-      ? `<p>Em modo <strong>RASTREIO_SEM_BANCO</strong>, os tokens ficam só em memória até reiniciar o processo. Defina <strong>ME_REFRESH_TOKEN</strong> (ou <strong>ME_PANEL_ACCESS_TOKEN</strong>) no <code>.env</code> para persistir entre reinícios.</p>`
-      : `<p>Coloque também <strong>ME_REFRESH_TOKEN</strong> no <code>.env</code> se quiser o mesmo valor em outro ambiente, ou deixe só no banco (Prisma).</p>`;
-    res.type("html").send(`<!DOCTYPE html>
-<html lang="pt-BR">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Melhor Envio conectado</title></head>
-<body style="font-family: system-ui, sans-serif; max-width: 36rem; margin: 2rem auto; padding: 0 1rem;">
-  <h1>Conectado ao Melhor Envio</h1>
-  <p>Os tokens foram aplicados no servidor. O <code>code</code> de autorização já foi usado e não pode ser reutilizado.</p>
-  ${blocoPersistencia}
-  <p><a href="/rastreios/">Ir ao rastreio</a></p>
-</body>
-</html>`);
-  } catch (e) {
-    console.error("[oauth] callback:", e);
-    res.status(500).type("html").send(
-      `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><h1>Falha ao trocar o code</h1><pre>${String(
-        e.message || e
-      )}</pre><p>O code pode ter expirado — inicie de novo em <a href="/oauth/melhor-envio/iniciar">/oauth/melhor-envio/iniciar</a>.</p></body></html>`
-    );
-  }
-});
 
 app.get("/formularioDoProduto", (_req, res) => {
   res.redirect(301, "/formulariocaixalove/");

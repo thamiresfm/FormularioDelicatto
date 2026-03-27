@@ -149,7 +149,7 @@ function registrarRotasRastreio(app) {
             ok: false,
             codigoErro: "integracao",
             erro:
-              "Rastreio indisponível: configure no servidor (ex.: Render) ME_PANEL_ACCESS_TOKEN ou ME_CLIENT_ID, ME_CLIENT_SECRET e ME_REFRESH_TOKEN do Melhor Envio.",
+              "Rastreio indisponível: configure no servidor (ex.: Render) ME_PANEL_ACCESS_TOKEN (JWT em Permissões de acesso) e ME_API_BASE.",
           });
         }
         if (me.resultado === "consulta_desligada") {

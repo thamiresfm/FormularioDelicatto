@@ -5,21 +5,15 @@
  *
  * IMPORTANTE — manutenção:
  * - Endpoints podem ser ajustados pela Melhor Envio. Em caso de mudança, altere apenas este arquivo.
- * - Autenticação: (1) JWT do painel ME em ME_PANEL_ACCESS_TOKEN — se definido, usado sempre; (2) OAuth2 só se o painel estiver vazio.
- *   Access em cache em memória; refresh rotacionado pela ME também (memória no mesmo processo, útil em RASTREIO_SEM_BANCO).
+ * - Autenticação: apenas JWT do painel ME em ME_PANEL_ACCESS_TOKEN (Permissões de acesso).
+ *   Cache em memória conforme expiração do JWT.
  * - Nenhum segredo deve ir para o frontend.
  */
 
-const { prisma } = require("./prisma");
-const { rastreioSemBanco } = require("./semBanco");
-
 const ME_BASE_DEFAULT = "https://www.melhorenvio.com.br";
 
-/** Cache em memória (rápido). Persistência opcional em IntegrationToken para sobreviver a restart. */
+/** Cache em memória do JWT do painel (evita reler exp em cada request). */
 let accessCache = { token: null, expiresAtMs: 0 };
-
-/** Refresh token atual (inclui rotação devolvida pela ME em grant_type=refresh_token). Prioridade sobre ME_REFRESH_TOKEN no .env no mesmo processo. */
-let refreshTokenMemory = null;
 
 function getBaseUrl() {
   let base = (process.env.ME_API_BASE || ME_BASE_DEFAULT).replace(/\/$/, "");
@@ -69,14 +63,18 @@ function jsonOuErroMe(text, contexto) {
   }
 }
 
-/** orders/search pode devolver array ou objeto com lista (ex.: { data: [...] }). */
+/**
+ * ME /orders/search pode devolver:
+ * - array direto [...]
+ * - paginação estilo Laravel: { current_page, data: [...], total, per_page, last_page, ... }
+ */
 function listaOrdersSearch(parsed) {
   if (Array.isArray(parsed)) return parsed;
-  if (parsed && typeof parsed === "object") {
-    if (Array.isArray(parsed.data)) return parsed.data;
-    if (Array.isArray(parsed.orders)) return parsed.orders;
-    if (Array.isArray(parsed.results)) return parsed.results;
-  }
+  if (!parsed || typeof parsed !== "object") return [];
+  if (Array.isArray(parsed.data)) return parsed.data;
+  if (Array.isArray(parsed.orders)) return parsed.orders;
+  if (Array.isArray(parsed.results)) return parsed.results;
+  if (Array.isArray(parsed.items)) return parsed.items;
   return [];
 }
 
@@ -92,141 +90,6 @@ function userAgentMelhorEnvio() {
     return `Delicatto Personalizados (${email})`;
   }
   return "DelicattoRastreio/1.0 (Node)";
-}
-
-/** Refresh token: memória (rotação ME) → `.env` → Prisma. */
-async function obterRefreshTokenArmazenado() {
-  const mem = refreshTokenMemory != null ? String(refreshTokenMemory).trim() : "";
-  if (mem) return mem;
-  const envRt = String(process.env.ME_REFRESH_TOKEN || "").trim();
-  if (envRt) return envRt;
-  if (rastreioSemBanco() || !prisma) return "";
-  try {
-    const row = await prisma.integrationToken.findUnique({
-      where: { id: "melhor_envio" },
-      select: { refreshToken: true },
-    });
-    return row?.refreshToken ? String(row.refreshToken).trim() : "";
-  } catch {
-    return "";
-  }
-}
-
-/**
- * URL para o usuário autorizar o app no navegador (redirect para login ME).
- * @see https://docs.melhorenvio.com.br/reference/fluxo-de-autoriza%C3%A7%C3%A3o
- */
-function montarUrlAutorizacaoOAuth() {
-  const clientId = String(process.env.ME_CLIENT_ID || "").trim();
-  if (!clientId) {
-    throw new Error("ME_CLIENT_ID não configurado.");
-  }
-  const redirectUri =
-    String(process.env.ME_OAUTH_REDIRECT_URI || "").trim() ||
-    "https://delicattopersonalizados.com.br/oauth/callback";
-  const scopes =
-    String(process.env.ME_OAUTH_SCOPES || "shipping-tracking").trim() || "shipping-tracking";
-  const base = getBaseUrl();
-  const u = new URL(`${base}/oauth/authorize`);
-  u.searchParams.set("client_id", clientId);
-  u.searchParams.set("redirect_uri", redirectUri);
-  u.searchParams.set("response_type", "code");
-  u.searchParams.set("scope", scopes);
-  const state = String(process.env.ME_OAUTH_STATE || "").trim();
-  if (state) u.searchParams.set("state", state);
-  return u.toString();
-}
-
-/**
- * Troca o authorization_code (one-shot, expira rápido) por access + refresh tokens.
- */
-async function trocarAuthorizationCodePorTokens(code) {
-  const clientId = process.env.ME_CLIENT_ID;
-  const clientSecret = process.env.ME_CLIENT_SECRET;
-  const redirectUri =
-    String(process.env.ME_OAUTH_REDIRECT_URI || "").trim() ||
-    "https://delicattopersonalizados.com.br/oauth/callback";
-  if (!clientId || !clientSecret) {
-    throw new Error("ME_CLIENT_ID e ME_CLIENT_SECRET são obrigatórios.");
-  }
-  const base = getBaseUrl();
-  const tokenUrl = `${base}/oauth/token`;
-  const codigo = String(code || "").trim();
-  const bodyJson = JSON.stringify({
-    grant_type: "authorization_code",
-    client_id: clientId,
-    client_secret: clientSecret,
-    redirect_uri: redirectUri,
-    code: codigo,
-  });
-
-  let res = await fetch(tokenUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: bodyJson,
-  });
-
-  if (!res.ok) {
-    const form = new URLSearchParams({
-      grant_type: "authorization_code",
-      client_id: String(clientId),
-      client_secret: String(clientSecret),
-      redirect_uri: redirectUri,
-      code: codigo,
-    });
-    res = await fetch(tokenUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Accept: "application/json",
-      },
-      body: form.toString(),
-    });
-  }
-
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(`Melhor Envio OAuth (authorization_code): ${res.status} ${t.slice(0, 400)}`);
-  }
-
-  return res.json();
-}
-
-/** Persiste access/refresh após authorization_code ou para alinhar cache ao banco. */
-async function persistirTokensOAuthResposta(data) {
-  const access = data.access_token;
-  const refresh = data.refresh_token;
-  const expiresIn = Number(data.expires_in || 3600);
-  const now = Date.now();
-  if (!access) {
-    throw new Error("Resposta OAuth sem access_token.");
-  }
-  accessCache = {
-    token: access,
-    expiresAtMs: now + expiresIn * 1000,
-  };
-  if (refresh && rastreioSemBanco()) {
-    refreshTokenMemory = String(refresh).trim();
-  }
-  if (prisma && !rastreioSemBanco()) {
-    await prisma.integrationToken.upsert({
-      where: { id: "melhor_envio" },
-      create: {
-        id: "melhor_envio",
-        accessToken: access,
-        refreshToken: refresh || undefined,
-        expiresAt: new Date(accessCache.expiresAtMs),
-      },
-      update: {
-        accessToken: access,
-        refreshToken: refresh || undefined,
-        expiresAt: new Date(accessCache.expiresAtMs),
-      },
-    });
-  }
 }
 
 /** Lê `exp` do JWT (segundos → ms) para cache; retorna null se inválido. */
@@ -245,121 +108,28 @@ function jwtExpParaMs(token) {
 }
 
 /**
- * Obtém access_token válido: se ME_PANEL_ACCESS_TOKEN existir, usa-o sempre (OAuth não é usado).
- * Sem painel: cache OAuth em memória; refresh via grant_type=refresh_token (JSON ou form-urlencoded).
+ * Bearer JWT do painel ME (ME_PANEL_ACCESS_TOKEN). Único modo de autenticação suportado.
  */
 async function obterAccessToken() {
   const now = Date.now();
   const panel = String(process.env.ME_PANEL_ACCESS_TOKEN || "").trim();
-  if (panel.length > 0) {
-    if (accessCache.token === panel && now < accessCache.expiresAtMs - 90_000) {
-      return accessCache.token;
-    }
-    const expMs = jwtExpParaMs(panel);
-    if (expMs != null && expMs <= now) {
-      throw new Error(
-        "Melhor Envio: ME_PANEL_ACCESS_TOKEN expirou. Gere um novo em Permissões de acesso no painel ME."
-      );
-    }
-    const ate = expMs != null ? expMs : now + 86400 * 1000;
-    accessCache = { token: panel, expiresAtMs: ate };
-    return panel;
-  }
-
-  if (accessCache.token && now < accessCache.expiresAtMs - 90_000) {
-    return accessCache.token;
-  }
-
-  const clientId = process.env.ME_CLIENT_ID;
-  const clientSecret = process.env.ME_CLIENT_SECRET;
-  const refreshToken = await obterRefreshTokenArmazenado();
-
-  if (!clientId || !clientSecret || !refreshToken) {
+  if (panel.length === 0) {
     throw new Error(
-      "Melhor Envio: configure ME_PANEL_ACCESS_TOKEN (JWT do painel) ou ME_CLIENT_ID + ME_CLIENT_SECRET + ME_REFRESH_TOKEN (ou conclua OAuth em GET /oauth/melhor-envio/iniciar)"
+      "Melhor Envio: defina ME_PANEL_ACCESS_TOKEN (JWT em Permissões de acesso no painel ME)."
     );
   }
-
-  const base = getBaseUrl();
-  const tokenUrl = `${base}/oauth/token`;
-
-  const bodyJson = JSON.stringify({
-    grant_type: "refresh_token",
-    client_id: clientId,
-    client_secret: clientSecret,
-    refresh_token: refreshToken,
-  });
-
-  let res = await fetch(tokenUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: bodyJson,
-  });
-
-  if (!res.ok) {
-    const form = new URLSearchParams({
-      grant_type: "refresh_token",
-      client_id: clientId,
-      client_secret: clientSecret,
-      refresh_token: refreshToken,
-    });
-    res = await fetch(tokenUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Accept: "application/json",
-      },
-      body: form.toString(),
-    });
+  if (accessCache.token === panel && now < accessCache.expiresAtMs - 90_000) {
+    return accessCache.token;
   }
-
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(`Melhor Envio OAuth falhou (${res.status}): ${t.slice(0, 400)}`);
+  const expMs = jwtExpParaMs(panel);
+  if (expMs != null && expMs <= now) {
+    throw new Error(
+      "Melhor Envio: ME_PANEL_ACCESS_TOKEN expirou. Gere um novo em Permissões de acesso no painel ME."
+    );
   }
-
-  const data = await res.json();
-  const access = data.access_token;
-  const expiresIn = Number(data.expires_in || 3600);
-  if (!access) {
-    throw new Error("Melhor Envio OAuth: resposta sem access_token");
-  }
-
-  accessCache = {
-    token: access,
-    expiresAtMs: now + expiresIn * 1000,
-  };
-
-  const novoRefresh = data.refresh_token ? String(data.refresh_token).trim() : "";
-  if (novoRefresh) {
-    refreshTokenMemory = novoRefresh;
-  }
-
-  if (prisma && !rastreioSemBanco()) {
-    try {
-      await prisma.integrationToken.upsert({
-        where: { id: "melhor_envio" },
-        create: {
-          id: "melhor_envio",
-          accessToken: access,
-          refreshToken: novoRefresh || refreshToken,
-          expiresAt: new Date(accessCache.expiresAtMs),
-        },
-        update: {
-          accessToken: access,
-          refreshToken: novoRefresh || undefined,
-          expiresAt: new Date(accessCache.expiresAtMs),
-        },
-      });
-    } catch (_e) {
-      /* opcional */
-    }
-  }
-
-  return access;
+  const ate = expMs != null ? expMs : now + 86400 * 1000;
+  accessCache = { token: panel, expiresAtMs: ate };
+  return panel;
 }
 
 /**
@@ -489,13 +259,23 @@ function extrairCamposDoPayload(payload) {
     return Number.isNaN(d.getTime()) ? null : d;
   };
 
-  const eventosBrutos = Array.isArray(payload.events)
+  let eventosBrutos = Array.isArray(payload.events)
     ? payload.events
     : Array.isArray(payload.tracking_events)
       ? payload.tracking_events
       : Array.isArray(payload.history)
         ? payload.history
         : [];
+
+  if (eventosBrutos.length === 0) {
+    const marcos = [
+      { created_at: payload.generated_at, description: "Etiqueta gerada", status: "generated" },
+      { created_at: payload.posted_at, description: "Postado", status: "posted" },
+      { created_at: payload.delivered_at, description: "Entregue", status: "delivered" },
+    ].filter((m) => m.created_at);
+    marcos.sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
+    eventosBrutos = marcos;
+  }
 
   const eventos = eventosBrutos.map((ev) => {
     const when = ev.created_at || ev.date || ev.occurred_at || ev.datetime || null;
@@ -525,7 +305,4 @@ module.exports = {
   pesquisarPedidosPorTermo,
   extrairCamposDoPayload,
   getBaseUrl,
-  montarUrlAutorizacaoOAuth,
-  trocarAuthorizationCodePorTokens,
-  persistirTokensOAuthResposta,
 };
