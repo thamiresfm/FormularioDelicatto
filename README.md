@@ -42,7 +42,7 @@ Rotas `/oauth/melhor-envio/iniciar` → `/oauth/callback` — o código lê `ME_
 
 **Secrets no GitHub (Environment `github-pages`):** guardar ali **não** coloca essas variáveis no site estático nem no Node por si só. Elas só ficam disponíveis em **GitHub Actions** se o workflow declarar `environment: github-pages` e passar os valores para o deploy (por exemplo, para um serviço que rode `server.js`).
 
-**Para o OAuth funcionar:** o servidor Node que recebe `GET /oauth/callback?code=...` precisa das variáveis OAuth no **hosting do Node** — **iguais** ao redirect cadastrado no app do Melhor Envio (ex.: `https://delicattopersonalizados.com.br/oauth/callback`, sem barra final). O domínio do callback deve apontar para esse Node, não só para o GitHub Pages.
+**Para o OAuth funcionar:** o servidor Node que recebe `GET /oauth/callback?code=...` precisa das variáveis OAuth no **hosting do Node**. A **`ME_OAUTH_REDIRECT_URI` tem de ser idêntica** à URL de callback cadastrada no app Melhor Envio (mesmo `https`, domínio, caminho; sem barra extra). Se estiver diferente, a API ME responde **Client invalid** e não autoriza o aplicativo. O domínio do callback deve apontar para esse Node, não só para o GitHub Pages.
 
 ## Render (Web Service)
 
@@ -59,6 +59,7 @@ Rotas `/oauth/melhor-envio/iniciar` → `/oauth/callback` — o código lê `ME_
 | Site desatualizado no ar | `npm run sync-pages`, commit e push. |
 | Rastreio: **405** ao consultar | O domínio está a servir só estático (ex.: Pages). Defina **`delicatto-api-base`** no `public/rastreios/index.html` com a URL do backend Node, ou aponte o DNS/proxy para o servidor onde corre `npm start`. |
 | **Render** não abre / deploy falhou | Ver **Logs** no painel. Confirme **Build Command** `npm install` e que o build mostra `prisma generate`. Variáveis **`ME_*`** no Render (não `NE_*`). |
+| OAuth ME: **Client invalid** | `ME_OAUTH_REDIRECT_URI` no servidor tem de coincidir **exatamente** com a URL de callback do app no painel ME (protocolo, domínio, caminho). |
 | WhatsApp não abre (app interno) | Abrir o site no **Safari** ou **Chrome**. |
 
 ---

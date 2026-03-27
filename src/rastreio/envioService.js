@@ -211,6 +211,12 @@ function mensagemPublicaErroIntegracaoMe(mensagemInterna) {
   if (/configure ME_PANEL_ACCESS_TOKEN|ME_CLIENT_ID \+ ME_CLIENT_SECRET/i.test(m)) {
     return "Integração Melhor Envio não configurada no servidor. Defina ME_PANEL_ACCESS_TOKEN (JWT do painel) no Render.";
   }
+  if (/Client invalid|invalid_client/i.test(m)) {
+    return (
+      "OAuth Melhor Envio: Client invalid — a URL de callback tem de ser idêntica à cadastrada no app ME. " +
+      "Confira ME_OAUTH_REDIRECT_URI no servidor (https, domínio, caminho, sem barra extra) e o painel do aplicativo."
+    );
+  }
   if (/OAuth falhou/i.test(m) && /invalid|revoked|expired|invalid_grant|400/i.test(m)) {
     return "Sessão OAuth do Melhor Envio inválida ou expirada. Refaça o OAuth ou atualize ME_REFRESH_TOKEN no Render.";
   }

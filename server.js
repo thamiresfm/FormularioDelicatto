@@ -264,7 +264,7 @@ app.get("/oauth/melhor-envio/iniciar", (req, res) => {
   }
 });
 
-/** Melhor Envio OAuth — mesma URL do redirect_uri cadastrado no app (ex.: /oauth/callback) */
+/** Melhor Envio OAuth — ME_OAUTH_REDIRECT_URI tem de ser idêntica ao callback do app ME (senão Client invalid). */
 app.get("/oauth/callback", async (req, res) => {
   if (req.query.error) {
     const desc = String(req.query.error_description || "");
