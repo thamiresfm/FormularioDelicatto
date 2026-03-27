@@ -145,6 +145,12 @@ async function consultarPublicoDiretoMelhorEnvio(codigoLimpo) {
  */
 function mensagemPublicaErroIntegracaoMe(mensagemInterna) {
   const m = String(mensagemInterna || "");
+  if (/HTML \(página do site\)|foi HTML \(página do site\)/i.test(m)) {
+    return (
+      "O Melhor Envio devolveu a página do site em vez da API (JSON). No servidor, defina ME_API_BASE como https://www.melhorenvio.com.br (com www, sem barra no fim). " +
+      "Evite usar só melhorenvio.com.br sem www."
+    );
+  }
   if (m.includes("ME_PANEL_ACCESS_TOKEN expirou")) {
     return "O JWT do painel Melhor Envio expirou. Gere um novo em Permissões de acesso no painel ME e atualize ME_PANEL_ACCESS_TOKEN no Render.";
   }

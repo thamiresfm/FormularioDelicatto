@@ -22,7 +22,36 @@ let accessCache = { token: null, expiresAtMs: 0 };
 let refreshTokenMemory = null;
 
 function getBaseUrl() {
-  return (process.env.ME_API_BASE || ME_BASE_DEFAULT).replace(/\/$/, "");
+  let base = (process.env.ME_API_BASE || ME_BASE_DEFAULT).replace(/\/$/, "");
+  // O apex (sem www) costuma responder com a SPA do site (HTML 200), não com a API JSON.
+  if (/^https?:\/\/melhorenvio\.com\.br$/i.test(base)) {
+    base = "https://www.melhorenvio.com.br";
+  }
+  return base;
+}
+
+function corpoEhPaginaHtml(text) {
+  const s = String(text || "").trimStart();
+  return /^\s*<!DOCTYPE\s+html/i.test(s) || /^\s*<\s*html[\s>/]/i.test(s);
+}
+
+function erroRespostaHtmlEmVezDeJson() {
+  return new Error(
+    "Melhor Envio: a resposta foi HTML (página do site) em vez de JSON. Defina ME_API_BASE como https://www.melhorenvio.com.br (com www, sem barra no fim). Evite melhorenvio.com.br sem www e confira o path /api/v2/me/…"
+  );
+}
+
+function jsonOuErroMe(text, contexto) {
+  if (corpoEhPaginaHtml(text)) {
+    throw erroRespostaHtmlEmVezDeJson();
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(
+      `Melhor Envio: corpo não é JSON (${contexto}): ${String(text).slice(0, 200)}`
+    );
+  }
 }
 
 /**
@@ -333,10 +362,14 @@ async function buscarEnvioPorId(shipmentId) {
         "User-Agent": userAgentMelhorEnvio(),
       },
     });
+    const bodyText = await res.text();
     if (res.ok) {
-      return res.json();
+      return jsonOuErroMe(bodyText, `shipment ${id}`);
     }
-    ultimoErro = `${res.status} ${await res.text().then((x) => x.slice(0, 200))}`;
+    if (corpoEhPaginaHtml(bodyText)) {
+      throw erroRespostaHtmlEmVezDeJson();
+    }
+    ultimoErro = `${res.status} ${bodyText.slice(0, 200)}`;
   }
   throw new Error(`Melhor Envio: não foi possível buscar envio ${id}. Último: ${ultimoErro}`);
 }
@@ -361,11 +394,14 @@ async function pesquisarPedidosPorTermo(q) {
       "User-Agent": userAgentMelhorEnvio(),
     },
   });
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(`Melhor Envio: pesquisa falhou (${res.status}): ${t.slice(0, 400)}`);
+  const text = await res.text();
+  if (corpoEhPaginaHtml(text)) {
+    throw erroRespostaHtmlEmVezDeJson();
   }
-  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(`Melhor Envio: pesquisa falhou (${res.status}): ${text.slice(0, 400)}`);
+  }
+  const data = jsonOuErroMe(text, "orders/search");
   return Array.isArray(data) ? data : [];
 }
 

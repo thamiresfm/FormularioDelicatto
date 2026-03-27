@@ -2,25 +2,28 @@
   "info": {
     "_postman_id": "a1b2c3d4-e5f6-7890-abcd-delicatto-rastreio",
     "name": "Delicatto — Rastreio + Admin",
-    "description": "## Variáveis (alinhadas ao `.env`)\n\n| Variável Postman | Variável no `.env` |\n|------------------|---------------------|\n| `baseUrl` | `PORT` → `http://localhost:{{PORT}}` (padrão 3000) |\n| `adminToken` | `RASTREIO_ADMIN_TOKEN` |\n| `codigoRastreio` | código de teste (ex.: cadastrado no admin) |\n| `envioId` | `id` do envio no Prisma (UUID) após criar |\n| `me_base` | `ME_API_BASE` |\n| `me_client_id` | `ME_CLIENT_ID` |\n| `me_client_secret` | `ME_CLIENT_SECRET` |\n| `me_refresh_token` | `ME_REFRESH_TOKEN` |\n\n**Importe também** `Delicatto-local.postman_environment.json`, selecione o ambiente no Postman e preencha os valores copiando do `.env` (não commite segredos).\n\nServidor: `npm start` na raiz do projeto.",
+    "description": "## Uso atual (coleção)\n\nSó o request **Melhor Envio → Pesquisar pedidos (orders/search)** está ativo. Os demais itens estão **desativados** (`disabled`); reative no Postman se precisar.\n\nAutenticação ME: **JWT do painel** em `{{me_panel_access_token}}` (variável `ME_PANEL_ACCESS_TOKEN` no `.env`). Não commite o token.\n\nEndpoint: `GET {{me_base}}/api/v2/me/orders/search?q={{codigoRastreio}}` — o parâmetro é **`?q=`**, não `/search/q=`.\n\nImporte `Delicatto-local.postman_environment.json` e preencha `me_panel_access_token` + `me_base` + `codigoRastreio`.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:3000" },
     { "key": "adminToken", "value": "" },
-    { "key": "codigoRastreio", "value": "888030639367070" },
+    { "key": "codigoRastreio", "value": "888030625436252" },
     { "key": "envioId", "value": "" },
     { "key": "me_base", "value": "https://www.melhorenvio.com.br" },
+    { "key": "me_panel_access_token", "value": "" },
     { "key": "me_client_id", "value": "" },
     { "key": "me_client_secret", "value": "" },
     { "key": "me_refresh_token", "value": "" }
   ],
   "item": [
     {
-      "name": "API pública",
+      "name": "API pública (desativado)",
+      "description": "Reative os itens no Postman se for usar o backend local.",
       "item": [
         {
           "name": "Health rastreio",
+          "disabled": true,
           "request": {
             "method": "GET",
             "header": [{ "key": "Accept", "value": "application/json" }],
@@ -29,6 +32,7 @@
         },
         {
           "name": "Consultar envio (público)",
+          "disabled": true,
           "request": {
             "method": "POST",
             "header": [
@@ -45,10 +49,12 @@
       ]
     },
     {
-      "name": "Admin (X-Rastreio-Admin-Token)",
+      "name": "Admin (desativado)",
+      "description": "Reative os itens no Postman se for usar rotas admin.",
       "item": [
         {
           "name": "Listar envios",
+          "disabled": true,
           "request": {
             "method": "GET",
             "header": [
@@ -60,6 +66,7 @@
         },
         {
           "name": "Criar cliente",
+          "disabled": true,
           "request": {
             "method": "POST",
             "header": [
@@ -76,6 +83,7 @@
         },
         {
           "name": "Criar pedido",
+          "disabled": true,
           "request": {
             "method": "POST",
             "header": [
@@ -92,6 +100,7 @@
         },
         {
           "name": "Cadastrar envio",
+          "disabled": true,
           "request": {
             "method": "POST",
             "header": [
@@ -108,6 +117,7 @@
         },
         {
           "name": "Sincronizar envio por ID",
+          "disabled": true,
           "request": {
             "method": "POST",
             "header": [
@@ -119,6 +129,7 @@
         },
         {
           "name": "Sincronizar todos",
+          "disabled": true,
           "request": {
             "method": "POST",
             "header": [
@@ -134,7 +145,8 @@
       "name": "Melhor Envio (API externa)",
       "item": [
         {
-          "name": "OAuth — refresh token",
+          "name": "OAuth — refresh token (desativado)",
+          "disabled": true,
           "request": {
             "method": "POST",
             "header": [
@@ -145,24 +157,26 @@
               "mode": "raw",
               "raw": "{\n  \"grant_type\": \"refresh_token\",\n  \"client_id\": \"{{me_client_id}}\",\n  \"client_secret\": \"{{me_client_secret}}\",\n  \"refresh_token\": \"{{me_refresh_token}}\"\n}"
             },
-            "url": "{{me_base}}/oauth/token"
+            "url": "{{me_base}}/oauth/token",
+            "description": "Desativado: fluxo atual usa ME_PANEL_ACCESS_TOKEN no request orders/search."
           }
         },
         {
-          "name": "Pesquisar etiqueta (orders/search)",
+          "name": "Pesquisar pedidos — orders/search (ME_PANEL_ACCESS_TOKEN)",
           "request": {
             "method": "GET",
             "header": [
               { "key": "Accept", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{me_access_token}}" },
-              { "key": "User-Agent", "value": "Delicatto Postman (teste@example.com)" }
+              { "key": "Authorization", "value": "Bearer {{me_panel_access_token}}" },
+              { "key": "User-Agent", "value": "Delicatto Postman (seu-email@exemplo.com)" }
             ],
             "url": {
               "raw": "{{me_base}}/api/v2/me/orders/search?q={{codigoRastreio}}",
               "host": ["{{me_base}}"],
               "path": ["api", "v2", "me", "orders", "search"],
               "query": [{ "key": "q", "value": "{{codigoRastreio}}" }]
-            }
+            },
+            "description": "GET com query `q` (não use `/search/q=`). Token = JWT Permissões de acesso no painel ME. Sem Cookie do browser."
           }
         }
       ]

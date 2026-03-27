@@ -177,7 +177,21 @@ form.addEventListener("submit", async (e) => {
       return;
     }
 
-    const data = await res.json().catch(() => ({}));
+    const raw = await res.text();
+    let data = {};
+    try {
+      data = raw ? JSON.parse(raw) : {};
+    } catch {
+      const s = raw.trimStart();
+      if (s.startsWith("<!DOCTYPE") || s.startsWith("<html")) {
+        mostrarErro(
+          "O endereço da API devolveu uma página HTML em vez do rastreio (JSON). " +
+            "Confira no HTML a meta delicatto-api-base: deve ser a URL do servidor Node (ex.: Render), não o site em GitHub Pages."
+        );
+        return;
+      }
+      data = {};
+    }
 
     if (data.ok) {
       renderResultado(data);
