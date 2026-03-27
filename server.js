@@ -1,6 +1,7 @@
 require("dotenv").config();
 
-if (!process.env.DATABASE_URL) {
+const { rastreioSemBanco } = require("./src/rastreio/semBanco");
+if (!process.env.DATABASE_URL && !rastreioSemBanco()) {
   process.env.DATABASE_URL = "file:./dev.db";
 }
 
@@ -282,15 +283,19 @@ app.get("/oauth/callback", async (req, res) => {
     const data = await trocarAuthorizationCodePorTokens(code);
     await persistirTokensOAuthResposta(data);
     if (process.env.NODE_ENV === "development") {
-      console.log("[oauth] Tokens OAuth armazenados (Prisma + cache). refresh_token length:", String(data.refresh_token || "").length);
+      const onde = rastreioSemBanco() ? "cache (sem Prisma)" : "Prisma + cache";
+      console.log(`[oauth] Tokens OAuth armazenados (${onde}). refresh_token length:`, String(data.refresh_token || "").length);
     }
+    const blocoPersistencia = rastreioSemBanco()
+      ? `<p>Em modo <strong>RASTREIO_SEM_BANCO</strong>, os tokens ficam só em memória até reiniciar o processo. Defina <strong>ME_REFRESH_TOKEN</strong> (ou <strong>ME_PANEL_ACCESS_TOKEN</strong>) no <code>.env</code> para persistir entre reinícios.</p>`
+      : `<p>Coloque também <strong>ME_REFRESH_TOKEN</strong> no <code>.env</code> se quiser o mesmo valor em outro ambiente, ou deixe só no banco (Prisma).</p>`;
     res.type("html").send(`<!DOCTYPE html>
 <html lang="pt-BR">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Melhor Envio conectado</title></head>
 <body style="font-family: system-ui, sans-serif; max-width: 36rem; margin: 2rem auto; padding: 0 1rem;">
   <h1>Conectado ao Melhor Envio</h1>
-  <p>Os tokens foram salvos no servidor. O <code>code</code> de autorização já foi usado e não pode ser reutilizado.</p>
-  <p>Coloque também <strong>ME_REFRESH_TOKEN</strong> no <code>.env</code> se quiser o mesmo valor em outro ambiente, ou deixe só no banco (Prisma).</p>
+  <p>Os tokens foram aplicados no servidor. O <code>code</code> de autorização já foi usado e não pode ser reutilizado.</p>
+  ${blocoPersistencia}
   <p><a href="/rastreios/">Ir ao rastreio</a></p>
 </body>
 </html>`);

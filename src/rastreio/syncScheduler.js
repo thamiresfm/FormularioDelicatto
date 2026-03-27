@@ -1,8 +1,13 @@
 const { listarEnviosParaPolling, sincronizarEnvioComMelhorEnvio } = require("./envioService");
+const { rastreioSemBanco } = require("./semBanco");
 
 let intervalId = null;
 
 function iniciarPollingMelhorEnvio() {
+  if (rastreioSemBanco()) {
+    console.log("[rastreio] Polling desativado (RASTREIO_SEM_BANCO).");
+    return;
+  }
   const minutos = Number(process.env.RASTREIO_POLL_MINUTOS || 0);
   if (!minutos || minutos < 5) {
     console.log(

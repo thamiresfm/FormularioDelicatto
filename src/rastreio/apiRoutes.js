@@ -1,6 +1,7 @@
 const express = require("express");
 const crypto = require("crypto");
 const { prisma } = require("./prisma");
+const { rastreioSemBanco } = require("./semBanco");
 const { consultaPublica } = require("./rateLimit");
 const { middlewareAdmin } = require("./adminAuth");
 const {
@@ -85,6 +86,10 @@ async function handleWebhookMelhorEnvio(req, res) {
 }
 
 function registrarWebhookMelhorEnvio(app) {
+  if (rastreioSemBanco()) {
+    console.log("[rastreio] Webhook Melhor Envio não registrado (RASTREIO_SEM_BANCO).");
+    return;
+  }
   app.post(
     "/api/rastreio/webhook/melhor-envio",
     express.raw({ type: "*/*", limit: "256kb" }),
@@ -111,7 +116,10 @@ function registrarRotasRastreio(app) {
         });
       }
 
-      let envio = await buscarEnvioPorCodigoPublico(codigo);
+      let envio = null;
+      if (!rastreioSemBanco()) {
+        envio = await buscarEnvioPorCodigoPublico(codigo);
+      }
       if (!envio) {
         const diretoMe = await consultarPublicoDiretoMelhorEnvio(codigo);
         if (diretoMe) {
@@ -149,6 +157,7 @@ function registrarRotasRastreio(app) {
     }
   });
 
+  if (!rastreioSemBanco()) {
   const admin = express.Router();
   admin.use(middlewareAdmin);
 
@@ -289,6 +298,7 @@ function registrarRotasRastreio(app) {
   });
 
   api.use("/admin", admin);
+  }
 
   app.use("/api/rastreio", api);
 }

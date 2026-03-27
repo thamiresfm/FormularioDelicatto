@@ -11,6 +11,7 @@
  */
 
 const { prisma } = require("./prisma");
+const { rastreioSemBanco } = require("./semBanco");
 
 const ME_BASE_DEFAULT = "https://www.melhorenvio.com.br";
 
@@ -39,6 +40,7 @@ function userAgentMelhorEnvio() {
 async function obterRefreshTokenArmazenado() {
   const envRt = String(process.env.ME_REFRESH_TOKEN || "").trim();
   if (envRt) return envRt;
+  if (rastreioSemBanco() || !prisma) return "";
   try {
     const row = await prisma.integrationToken.findUnique({
       where: { id: "melhor_envio" },
@@ -146,20 +148,22 @@ async function persistirTokensOAuthResposta(data) {
     token: access,
     expiresAtMs: now + expiresIn * 1000,
   };
-  await prisma.integrationToken.upsert({
-    where: { id: "melhor_envio" },
-    create: {
-      id: "melhor_envio",
-      accessToken: access,
-      refreshToken: refresh || undefined,
-      expiresAt: new Date(accessCache.expiresAtMs),
-    },
-    update: {
-      accessToken: access,
-      refreshToken: refresh || undefined,
-      expiresAt: new Date(accessCache.expiresAtMs),
-    },
-  });
+  if (prisma && !rastreioSemBanco()) {
+    await prisma.integrationToken.upsert({
+      where: { id: "melhor_envio" },
+      create: {
+        id: "melhor_envio",
+        accessToken: access,
+        refreshToken: refresh || undefined,
+        expiresAt: new Date(accessCache.expiresAtMs),
+      },
+      update: {
+        accessToken: access,
+        refreshToken: refresh || undefined,
+        expiresAt: new Date(accessCache.expiresAtMs),
+      },
+    });
+  }
 }
 
 /** Lê `exp` do JWT (segundos → ms) para cache; retorna null se inválido. */
@@ -266,23 +270,25 @@ async function obterAccessToken() {
     expiresAtMs: now + expiresIn * 1000,
   };
 
-  try {
-    await prisma.integrationToken.upsert({
-      where: { id: "melhor_envio" },
-      create: {
-        id: "melhor_envio",
-        accessToken: access,
-        refreshToken: data.refresh_token || refreshToken,
-        expiresAt: new Date(accessCache.expiresAtMs),
-      },
-      update: {
-        accessToken: access,
-        refreshToken: data.refresh_token || undefined,
-        expiresAt: new Date(accessCache.expiresAtMs),
-      },
-    });
-  } catch (_e) {
-    /* opcional */
+  if (prisma && !rastreioSemBanco()) {
+    try {
+      await prisma.integrationToken.upsert({
+        where: { id: "melhor_envio" },
+        create: {
+          id: "melhor_envio",
+          accessToken: access,
+          refreshToken: data.refresh_token || refreshToken,
+          expiresAt: new Date(accessCache.expiresAtMs),
+        },
+        update: {
+          accessToken: access,
+          refreshToken: data.refresh_token || undefined,
+          expiresAt: new Date(accessCache.expiresAtMs),
+        },
+      });
+    } catch (_e) {
+      /* opcional */
+    }
   }
 
   return access;

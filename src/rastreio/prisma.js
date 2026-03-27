@@ -1,7 +1,11 @@
-const { PrismaClient } = require("@prisma/client");
+const { rastreioSemBanco } = require("./semBanco");
 
-const prisma = new PrismaClient({
-  log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
-});
+let prisma = null;
+if (!rastreioSemBanco()) {
+  const { PrismaClient } = require("@prisma/client");
+  prisma = new PrismaClient({
+    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+  });
+}
 
 module.exports = { prisma };

@@ -1,4 +1,5 @@
 const { prisma } = require("./prisma");
+const { rastreioSemBanco } = require("./semBanco");
 const {
   buscarEnvioPorId,
   extrairCamposDoPayload,
@@ -26,6 +27,7 @@ function sanitizarCodigoRastreio(codigo) {
 
 async function buscarEnvioPorCodigoPublicoCompat(codigoLimpo) {
   if (!codigoLimpo || codigoLimpo.length < 3) return null;
+  if (rastreioSemBanco() || !prisma) return null;
   return prisma.envio.findFirst({
     where: { codigoRastreio: codigoLimpo },
     include: {
@@ -40,6 +42,7 @@ async function credenciaisMelhorEnvioConfiguradas() {
   if (panel) return true;
   if (!process.env.ME_CLIENT_ID || !process.env.ME_CLIENT_SECRET) return false;
   if (String(process.env.ME_REFRESH_TOKEN || "").trim()) return true;
+  if (rastreioSemBanco() || !prisma) return false;
   const row = await prisma.integrationToken.findUnique({
     where: { id: "melhor_envio" },
     select: { refreshToken: true },
@@ -98,7 +101,7 @@ function montarDtoPublicoDesdePayloadMe(raw, codigoRastreioExibicao) {
  * Retorna null se não achar ou se não houver credenciais ME.
  */
 async function consultarPublicoDiretoMelhorEnvio(codigoLimpo) {
-  if (process.env.RASTREIO_CONSULTA_ME_SEM_CADASTRO === "0") {
+  if (process.env.RASTREIO_CONSULTA_ME_SEM_CADASTRO === "0" && !rastreioSemBanco()) {
     return null;
   }
   if (!(await credenciaisMelhorEnvioConfiguradas())) {
