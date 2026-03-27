@@ -1,0 +1,171 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-delicatto-rastreio",
+    "name": "Delicatto — Rastreio + Admin",
+    "description": "## Variáveis (alinhadas ao `.env`)\n\n| Variável Postman | Variável no `.env` |\n|------------------|---------------------|\n| `baseUrl` | `PORT` → `http://localhost:{{PORT}}` (padrão 3000) |\n| `adminToken` | `RASTREIO_ADMIN_TOKEN` |\n| `codigoRastreio` | código de teste (ex.: cadastrado no admin) |\n| `envioId` | `id` do envio no Prisma (UUID) após criar |\n| `me_base` | `ME_API_BASE` |\n| `me_client_id` | `ME_CLIENT_ID` |\n| `me_client_secret` | `ME_CLIENT_SECRET` |\n| `me_refresh_token` | `ME_REFRESH_TOKEN` |\n\n**Importe também** `Delicatto-local.postman_environment.json`, selecione o ambiente no Postman e preencha os valores copiando do `.env` (não commite segredos).\n\nServidor: `npm start` na raiz do projeto.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "adminToken", "value": "" },
+    { "key": "codigoRastreio", "value": "888030639367070" },
+    { "key": "envioId", "value": "" },
+    { "key": "me_base", "value": "https://www.melhorenvio.com.br" },
+    { "key": "me_client_id", "value": "" },
+    { "key": "me_client_secret", "value": "" },
+    { "key": "me_refresh_token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "API pública",
+      "item": [
+        {
+          "name": "Health rastreio",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/rastreio/health"
+          }
+        },
+        {
+          "name": "Consultar envio (público)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"{{codigoRastreio}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/rastreio/consultar"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin (X-Rastreio-Admin-Token)",
+      "item": [
+        {
+          "name": "Listar envios",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "X-Rastreio-Admin-Token", "value": "{{adminToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/rastreio/admin/envios"
+          }
+        },
+        {
+          "name": "Criar cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" },
+              { "key": "X-Rastreio-Admin-Token", "value": "{{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Cliente teste\",\n  \"email\": \"teste@example.com\",\n  \"telefone\": \"11999999999\"\n}"
+            },
+            "url": "{{baseUrl}}/api/rastreio/admin/clientes"
+          }
+        },
+        {
+          "name": "Criar pedido",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" },
+              { "key": "X-Rastreio-Admin-Token", "value": "{{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"PED-001\",\n  \"titulo\": \"Pedido teste\",\n  \"clienteId\": null\n}"
+            },
+            "url": "{{baseUrl}}/api/rastreio/admin/pedidos"
+          }
+        },
+        {
+          "name": "Cadastrar envio",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" },
+              { "key": "X-Rastreio-Admin-Token", "value": "{{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigoRastreio\": \"{{codigoRastreio}}\",\n  \"melhorEnvioShipmentId\": null,\n  \"pedidoId\": null\n}"
+            },
+            "url": "{{baseUrl}}/api/rastreio/admin/envios"
+          }
+        },
+        {
+          "name": "Sincronizar envio por ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "X-Rastreio-Admin-Token", "value": "{{adminToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/rastreio/admin/envios/{{envioId}}/sincronizar"
+          }
+        },
+        {
+          "name": "Sincronizar todos",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "X-Rastreio-Admin-Token", "value": "{{adminToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/rastreio/admin/sincronizar-todos"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Melhor Envio (API externa)",
+      "item": [
+        {
+          "name": "OAuth — refresh token",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"refresh_token\",\n  \"client_id\": \"{{me_client_id}}\",\n  \"client_secret\": \"{{me_client_secret}}\",\n  \"refresh_token\": \"{{me_refresh_token}}\"\n}"
+            },
+            "url": "{{me_base}}/oauth/token"
+          }
+        },
+        {
+          "name": "Pesquisar etiqueta (orders/search)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{me_access_token}}" },
+              { "key": "User-Agent", "value": "Delicatto Postman (teste@example.com)" }
+            ],
+            "url": {
+              "raw": "{{me_base}}/api/v2/me/orders/search?q={{codigoRastreio}}",
+              "host": ["{{me_base}}"],
+              "path": ["api", "v2", "me", "orders", "search"],
+              "query": [{ "key": "q", "value": "{{codigoRastreio}}" }]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

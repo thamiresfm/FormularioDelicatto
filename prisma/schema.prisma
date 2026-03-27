@@ -1,0 +1,85 @@
+// Modelagem do módulo de rastreamento Delicatto + Melhor Envio.
+// Produção: use PostgreSQL (altere provider e DATABASE_URL).
+// Desenvolvimento local: SQLite (arquivo em prisma/dev.db).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Cliente {
+  id        String   @id @default(cuid())
+  nome      String
+  email     String?
+  telefone  String?
+  createdAt DateTime @default(now())
+  pedidos   Pedido[]
+}
+
+model Pedido {
+  id        String   @id @default(cuid())
+  codigo    String   @unique
+  clienteId String?
+  cliente   Cliente? @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  titulo    String?
+  createdAt DateTime @default(now())
+  envios    Envio[]
+}
+
+model Envio {
+  id                    String   @id @default(cuid())
+  pedidoId              String?
+  pedido                Pedido?  @relation(fields: [pedidoId], references: [id], onDelete: SetNull)
+  /// Código informado ao cliente (campo público de consulta).
+  codigoRastreio        String   @unique
+  /// ID do envio (etiqueta) na API Melhor Envio — consulta em melhorEnvioClient.js
+  melhorEnvioShipmentId String?
+  statusRaw             String?
+  statusNormalizado     String
+  transportadora      String?
+  dataCriacao           DateTime?
+  dataAtualizacao       DateTime?
+  ultimaSincronizacao   DateTime?
+  payloadSnapshot       String? // JSON bruto do último sync (debug)
+  eventos               TrackingEvent[]
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([statusNormalizado])
+  @@index([melhorEnvioShipmentId])
+}
+
+model TrackingEvent {
+  id         String   @id @default(cuid())
+  envioId    String
+  envio      Envio    @relation(fields: [envioId], references: [id], onDelete: Cascade)
+  ocorridoEm DateTime?
+  descricao  String
+  statusRaw  String?
+  createdAt  DateTime @default(now())
+
+  @@index([envioId])
+}
+
+/// Cache opcional de token OAuth (persistência entre reinícios). O refresh principal vem do .env.
+model IntegrationToken {
+  id           String    @id @default("melhor_envio")
+  accessToken  String?
+  refreshToken String?
+  expiresAt    DateTime?
+  updatedAt    DateTime  @updatedAt
+}
+
+model WebhookLog {
+  id        String   @id @default(cuid())
+  payload   String
+  headers   String?
+  ip        String?
+  sucesso   Boolean  @default(false)
+  mensagem  String?
+  createdAt DateTime @default(now())
+}

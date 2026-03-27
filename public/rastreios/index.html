@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- URL do backend Node (vazio = mesma origem). Em GitHub Pages, coloque a URL do servidor da API, ex.: https://api.seudominio.com -->
+    <meta name="delicatto-api-base" content="" />
+    <base href="/rastreios/" />
+    <link rel="canonical" href="https://delicattopersonalizados.com.br/rastreios/" />
+    <title>Acompanhe seu pedido — Delicatto Personalizados</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Great+Vibes&family=Source+Sans+3:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page-bg" aria-hidden="true"></div>
+    <header class="site-header">
+      <a href="/formulariocaixalove/">
+        <img
+          src="/formulariocaixalove/assets/logo-delicatto.png"
+          alt="Delicatto Personalizados"
+          class="brand-logo"
+          width="280"
+          height="auto"
+        />
+      </a>
+      <p class="tagline">Presentes personalizados com carinho</p>
+    </header>
+    <main class="main-content">
+      <section class="card" aria-labelledby="titulo-rastreio">
+        <h1 id="titulo-rastreio" class="card-title">Acompanhe seu pedido</h1>
+        <p class="card-lead">
+          Digite o código de rastreio que você recebeu da Delicatto para ver o status atual do envio.
+        </p>
+        <form id="form-rastreio" novalidate>
+          <label class="field">
+            <span class="field-label">Código de rastreio</span>
+            <input
+              type="text"
+              id="codigo"
+              name="codigo"
+              autocomplete="off"
+              maxlength="80"
+              placeholder="Ex.: código informado pela loja"
+              required
+            />
+          </label>
+          <button type="submit" class="btn btn-primary" id="btn-consultar">Consultar envio</button>
+          <p class="hint">Somente o código fornecido pela loja é aceito nesta consulta.</p>
+        </form>
+        <div id="state-loading" class="state-hidden toast-inline info" role="status">Consultando…</div>
+        <div id="state-erro" class="state-hidden toast-inline error" role="alert"></div>
+        <div id="painel-resultado" class="state-hidden">
+          <div id="status-pill" class="status-pill neutral"></div>
+          <p id="msg-amigavel" class="msg-lead"></p>
+          <div class="steps" id="steps-bar"></div>
+          <dl class="meta-grid" id="meta-grid"></dl>
+          <h2 class="card-title" style="font-size: 1.25rem; margin-top: 1.5rem">Histórico</h2>
+          <ul class="timeline" id="timeline"></ul>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <p>© Delicatto Personalizados</p>
+      <p class="footer-links">
+        <a href="https://wa.me/5521996728473" target="_blank" rel="noopener noreferrer">WhatsApp +55 21 99672-8473</a>
+      </p>
+    </footer>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

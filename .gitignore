@@ -1,7 +1,16 @@
 node_modules/
 uploads/
-.env
 *.log
 .DS_Store
 *.old*
 *.bak*
+prisma/dev.db
+prisma/dev.db-journal
+
+# Segredos — nunca commitar (use .env.example como modelo)
+.env
+.env.*
+!.env.example
+
+# Rastreio público ok; painel admin só local / deploy privado
+public/rastreios/admin/
