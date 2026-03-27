@@ -25,6 +25,33 @@ function urlApiConsultar() {
   return `${base}/api/rastreio/consultar`;
 }
 
+const MSG_ERRO_REDE =
+  "Não foi possível contactar o servidor de rastreio. " +
+  "No plano gratuito (Render), após inatividade o serviço pode demorar até cerca de um minuto a responder. " +
+  "Aguarde e tente de novo; verifique Wi‑Fi ou dados móveis, VPN e bloqueadores. " +
+  "Se o erro continuar, teste outro navegador ou rede.";
+
+async function fetchConsultarRastreio(codigo) {
+  const url = urlApiConsultar();
+  const init = {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ codigo }),
+  };
+  let ultimoErro;
+  for (let tentativa = 0; tentativa < 2; tentativa++) {
+    try {
+      if (tentativa > 0) {
+        await new Promise((r) => setTimeout(r, 2500));
+      }
+      return await fetch(url, init);
+    } catch (err) {
+      ultimoErro = err;
+    }
+  }
+  throw ultimoErro;
+}
+
 const form = document.getElementById("form-rastreio");
 const input = document.getElementById("codigo");
 const btn = document.getElementById("btn-consultar");
@@ -161,11 +188,7 @@ form.addEventListener("submit", async (e) => {
 
   setLoading(true);
   try {
-    const res = await fetch(urlApiConsultar(), {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ codigo }),
-    });
+    const res = await fetchConsultarRastreio(codigo);
 
     if (res.status === 405) {
       mostrarErro(
@@ -230,7 +253,7 @@ form.addEventListener("submit", async (e) => {
 
     mostrarErro("Resposta inesperada. Tente novamente.");
   } catch {
-    mostrarErro("Sem conexão ou servidor indisponível. Tente novamente.");
+    mostrarErro(MSG_ERRO_REDE);
   } finally {
     setLoading(false);
   }
