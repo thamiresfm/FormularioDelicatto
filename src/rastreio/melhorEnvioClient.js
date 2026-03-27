@@ -30,9 +30,17 @@ function getBaseUrl() {
   return base;
 }
 
+function normalizarTextoRespostaMe(text) {
+  return String(text ?? "")
+    .replace(/^\uFEFF/, "")
+    .trim();
+}
+
 function corpoEhPaginaHtml(text) {
-  const s = String(text || "").trimStart();
-  return /^\s*<!DOCTYPE\s+html/i.test(s) || /^\s*<\s*html[\s>/]/i.test(s);
+  const s = normalizarTextoRespostaMe(text);
+  if (!s) return false;
+  if (s[0] === "<") return true;
+  return /^<!DOCTYPE\s+html/i.test(s) || /^<html[\s>/]/i.test(s);
 }
 
 function erroRespostaHtmlEmVezDeJson() {
@@ -42,16 +50,34 @@ function erroRespostaHtmlEmVezDeJson() {
 }
 
 function jsonOuErroMe(text, contexto) {
-  if (corpoEhPaginaHtml(text)) {
+  const trimmed = normalizarTextoRespostaMe(text);
+  if (!trimmed) {
+    throw new Error(`Melhor Envio: resposta vazia (${contexto})`);
+  }
+  if (corpoEhPaginaHtml(trimmed)) {
     throw erroRespostaHtmlEmVezDeJson();
   }
   try {
-    return JSON.parse(text);
+    return JSON.parse(trimmed);
   } catch {
+    if (trimmed[0] === "<") {
+      throw erroRespostaHtmlEmVezDeJson();
+    }
     throw new Error(
-      `Melhor Envio: corpo não é JSON (${contexto}): ${String(text).slice(0, 200)}`
+      `Melhor Envio: corpo não é JSON (${contexto}): ${trimmed.slice(0, 200)}`
     );
   }
+}
+
+/** orders/search pode devolver array ou objeto com lista (ex.: { data: [...] }). */
+function listaOrdersSearch(parsed) {
+  if (Array.isArray(parsed)) return parsed;
+  if (parsed && typeof parsed === "object") {
+    if (Array.isArray(parsed.data)) return parsed.data;
+    if (Array.isArray(parsed.orders)) return parsed.orders;
+    if (Array.isArray(parsed.results)) return parsed.results;
+  }
+  return [];
 }
 
 /**
@@ -404,8 +430,8 @@ async function pesquisarPedidosPorTermo(q) {
   if (!res.ok) {
     throw new Error(`Melhor Envio: pesquisa falhou (${res.status}): ${text.slice(0, 400)}`);
   }
-  const data = jsonOuErroMe(text, "orders/search");
-  return Array.isArray(data) ? data : [];
+  const parsed = jsonOuErroMe(text, "orders/search");
+  return listaOrdersSearch(parsed);
 }
 
 /**

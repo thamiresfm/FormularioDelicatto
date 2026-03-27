@@ -199,8 +199,14 @@ function mensagemPublicaErroIntegracaoMe(mensagemInterna) {
     }
     return "Não foi possível obter os detalhes do envio no Melhor Envio. Tente de novo em instantes ou fale com a loja.";
   }
+  if (/resposta vazia/i.test(m)) {
+    return "O Melhor Envio devolveu resposta vazia. Verifique ME_API_BASE, token e tente de novo; se persistir, veja os logs do servidor.";
+  }
   if (/corpo não é JSON/i.test(m)) {
-    return "A API do Melhor Envio devolveu um formato inesperado. Confira ME_API_BASE (https://www.melhorenvio.com.br) e o token.";
+    return (
+      "A API do Melhor Envio devolveu texto que não é JSON (pode ser HTML ou erro em outro formato). " +
+      "Confira ME_API_BASE (https://www.melhorenvio.com.br com www), ME_PANEL_ACCESS_TOKEN e RASTREIO_DEBUG_ME=1 para ver o detalhe técnico."
+    );
   }
   if (/configure ME_PANEL_ACCESS_TOKEN|ME_CLIENT_ID \+ ME_CLIENT_SECRET/i.test(m)) {
     return "Integração Melhor Envio não configurada no servidor. Defina ME_PANEL_ACCESS_TOKEN (JWT do painel) no Render.";
