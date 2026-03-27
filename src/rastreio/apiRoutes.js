@@ -121,9 +121,33 @@ function registrarRotasRastreio(app) {
         envio = await buscarEnvioPorCodigoPublico(codigo);
       }
       if (!envio) {
-        const diretoMe = await consultarPublicoDiretoMelhorEnvio(codigo);
-        if (diretoMe) {
-          return res.json(diretoMe);
+        const me = await consultarPublicoDiretoMelhorEnvio(codigo);
+        if (me.resultado === "ok") {
+          return res.json(me.dto);
+        }
+        if (me.resultado === "sem_credenciais") {
+          return res.status(200).json({
+            ok: false,
+            codigoErro: "integracao",
+            erro:
+              "Rastreio indisponível: configure no servidor (ex.: Render) ME_PANEL_ACCESS_TOKEN ou ME_CLIENT_ID, ME_CLIENT_SECRET e ME_REFRESH_TOKEN do Melhor Envio.",
+          });
+        }
+        if (me.resultado === "consulta_desligada") {
+          return res.status(200).json({
+            ok: false,
+            codigoErro: "integracao",
+            erro: "Consulta ao Melhor Envio sem cadastro local está desativada no servidor.",
+          });
+        }
+        if (me.resultado === "erro_me") {
+          return res.status(200).json({
+            ok: false,
+            codigoErro: "integracao",
+            erro:
+              "Não foi possível consultar o Melhor Envio no momento. Tente de novo em instantes ou fale com a loja.",
+            detalhe: process.env.NODE_ENV === "development" ? me.mensagem : undefined,
+          });
         }
         return res.status(200).json({
           ok: false,

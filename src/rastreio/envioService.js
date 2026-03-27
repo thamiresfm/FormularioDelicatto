@@ -98,26 +98,26 @@ function montarDtoPublicoDesdePayloadMe(raw, codigoRastreioExibicao) {
 
 /**
  * Tenta localizar o envio na API ME pelo código (GET /orders/search) e montar o DTO público.
- * Retorna null se não achar ou se não houver credenciais ME.
+ * Retorno estruturado para distinguir credenciais em falta / erro ME de “código não encontrado”.
  */
 async function consultarPublicoDiretoMelhorEnvio(codigoLimpo) {
   if (process.env.RASTREIO_CONSULTA_ME_SEM_CADASTRO === "0" && !rastreioSemBanco()) {
-    return null;
+    return { resultado: "consulta_desligada" };
   }
   if (!(await credenciaisMelhorEnvioConfiguradas())) {
-    return null;
+    return { resultado: "sem_credenciais" };
   }
   try {
     const pedidos = await pesquisarPedidosPorTermo(codigoLimpo);
     const match = escolherPedidoPorCodigoRastreio(pedidos, codigoLimpo);
     if (!match?.id) {
-      return null;
+      return { resultado: "nao_encontrado" };
     }
     const raw = await buscarEnvioPorId(match.id);
-    return montarDtoPublicoDesdePayloadMe(raw, codigoLimpo);
+    return { resultado: "ok", dto: montarDtoPublicoDesdePayloadMe(raw, codigoLimpo) };
   } catch (e) {
     console.error("[rastreio] consulta direta ME:", e.message);
-    return null;
+    return { resultado: "erro_me", mensagem: e.message };
   }
 }
 
