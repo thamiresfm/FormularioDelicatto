@@ -122,9 +122,9 @@ function renderResultado(data) {
   const etapas = data.etapas || [];
   stepsBar.innerHTML = "";
   if (etapa < 0 || st === "attention") {
-    wrapSteps.classList.add("state-hidden");
+    wrapSteps?.classList.add("state-hidden");
   } else {
-    wrapSteps.classList.remove("state-hidden");
+    wrapSteps?.classList.remove("state-hidden");
     etapas.forEach((e, i) => {
       const div = document.createElement("div");
       div.className = "step";

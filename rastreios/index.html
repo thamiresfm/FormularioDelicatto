@@ -58,7 +58,9 @@
         <div id="painel-resultado" class="state-hidden">
           <div id="status-pill" class="status-pill neutral"></div>
           <p id="msg-amigavel" class="msg-lead"></p>
-          <div class="steps" id="steps-bar"></div>
+          <div id="wrap-steps">
+            <div class="steps" id="steps-bar"></div>
+          </div>
           <dl class="meta-grid" id="meta-grid"></dl>
           <h2 class="card-title" style="font-size: 1.25rem; margin-top: 1.5rem">Histórico</h2>
           <ul class="timeline" id="timeline"></ul>
@@ -79,6 +81,6 @@
         if (h === "localhost" || h === "127.0.0.1") m.setAttribute("content", "");
       })();
     </script>
-    <script type="module" src="./app.js?v=5"></script>
+    <script type="module" src="./app.js?v=6"></script>
   </body>
 </html>
