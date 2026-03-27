@@ -6,7 +6,7 @@
  * IMPORTANTE — manutenção:
  * - Endpoints podem ser ajustados pela Melhor Envio. Em caso de mudança, altere apenas este arquivo.
  * - Autenticação: (1) JWT do painel ME em ME_PANEL_ACCESS_TOKEN, ou (2) OAuth2 com ME_REFRESH_TOKEN.
- *   Access token em cache em memória.
+ *   Access em cache em memória; refresh rotacionado pela ME também (memória no mesmo processo, útil em RASTREIO_SEM_BANCO).
  * - Nenhum segredo deve ir para o frontend.
  */
 
@@ -17,6 +17,9 @@ const ME_BASE_DEFAULT = "https://www.melhorenvio.com.br";
 
 /** Cache em memória (rápido). Persistência opcional em IntegrationToken para sobreviver a restart. */
 let accessCache = { token: null, expiresAtMs: 0 };
+
+/** Refresh token atual (inclui rotação devolvida pela ME em grant_type=refresh_token). Prioridade sobre ME_REFRESH_TOKEN no .env no mesmo processo. */
+let refreshTokenMemory = null;
 
 function getBaseUrl() {
   return (process.env.ME_API_BASE || ME_BASE_DEFAULT).replace(/\/$/, "");
@@ -36,8 +39,10 @@ function userAgentMelhorEnvio() {
   return "DelicattoRastreio/1.0 (Node)";
 }
 
-/** Refresh token: prioridade `.env`; senão último salvo após OAuth no Prisma. */
+/** Refresh token: memória (rotação ME) → `.env` → Prisma. */
 async function obterRefreshTokenArmazenado() {
+  const mem = refreshTokenMemory != null ? String(refreshTokenMemory).trim() : "";
+  if (mem) return mem;
   const envRt = String(process.env.ME_REFRESH_TOKEN || "").trim();
   if (envRt) return envRt;
   if (rastreioSemBanco() || !prisma) return "";
@@ -148,6 +153,9 @@ async function persistirTokensOAuthResposta(data) {
     token: access,
     expiresAtMs: now + expiresIn * 1000,
   };
+  if (refresh && rastreioSemBanco()) {
+    refreshTokenMemory = String(refresh).trim();
+  }
   if (prisma && !rastreioSemBanco()) {
     await prisma.integrationToken.upsert({
       where: { id: "melhor_envio" },
@@ -270,6 +278,11 @@ async function obterAccessToken() {
     expiresAtMs: now + expiresIn * 1000,
   };
 
+  const novoRefresh = data.refresh_token ? String(data.refresh_token).trim() : "";
+  if (novoRefresh) {
+    refreshTokenMemory = novoRefresh;
+  }
+
   if (prisma && !rastreioSemBanco()) {
     try {
       await prisma.integrationToken.upsert({
@@ -277,12 +290,12 @@ async function obterAccessToken() {
         create: {
           id: "melhor_envio",
           accessToken: access,
-          refreshToken: data.refresh_token || refreshToken,
+          refreshToken: novoRefresh || refreshToken,
           expiresAt: new Date(accessCache.expiresAtMs),
         },
         update: {
           accessToken: access,
-          refreshToken: data.refresh_token || undefined,
+          refreshToken: novoRefresh || undefined,
           expiresAt: new Date(accessCache.expiresAtMs),
         },
       });
