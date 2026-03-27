@@ -31,6 +31,14 @@ Abra `http://localhost:3000`. O `server.js` serve a pasta `public/`.
   `<meta name="delicatto-api-base" content="https://delicattopersonalizados.com.br" />`  
   (sem barra no fim). Vazio = mesma origem (ideal quando o HTML e o Node são o mesmo site).
 
+### OAuth Melhor Envio (`/oauth/melhor-envio/iniciar` → `/oauth/callback`)
+
+O código já lê `ME_CLIENT_ID`, `ME_CLIENT_SECRET` e `ME_OAUTH_REDIRECT_URI` em `process.env` (ver `.env.example`).
+
+**Secrets no GitHub (Environment `github-pages`):** guardar ali **não** coloca essas variáveis no site estático nem no Node por si só. Elas só ficam disponíveis em **GitHub Actions** se o workflow declarar `environment: github-pages` e passar os valores para o deploy (por exemplo, para um serviço que rode `server.js`).
+
+**Para o OAuth funcionar de verdade:** o servidor Node que recebe `GET /oauth/callback?code=...` precisa ter as mesmas três variáveis configuradas no **hosting do Node** (Render, VPS, Railway, etc.) ou no `.env` local — **igual** ao redirect cadastrado no app do Melhor Envio (ex.: `https://delicattopersonalizados.com.br/oauth/callback`, sem barra final). O domínio do callback deve apontar para esse Node, não só para o GitHub Pages.
+
 ## Problemas comuns
 
 | Situação | O que fazer |
