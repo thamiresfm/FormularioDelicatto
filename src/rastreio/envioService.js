@@ -14,12 +14,6 @@ const {
 
 const MAX_CODIGO = 80;
 
-/** UUID de pedido/envio ME (36 chars, hex + hífens) — permite GET /orders/{id} direto. */
-function pareceUuidOrderMe(s) {
-  const t = String(s || "").trim();
-  return /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i.test(t);
-}
-
 /** Lê env com trim e sem BOM (evita “vazio” invisível no Render / copy-paste). */
 function envStr(key) {
   return String(process.env[key] ?? "")
@@ -83,28 +77,47 @@ function flagsEnvMelhorEnvioPublico() {
   };
 }
 
-/** Escolhe o pedido cuja trilha de rastreio bate com o código digitado; senão o primeiro resultado. */
+/**
+ * UUID do pedido/etiqueta na ME (GET /api/v2/me/orders/{id}).
+ * Doc: https://docs.melhorenvio.com.br/reference/listar-informacoes-de-uma-etiqueta
+ */
+function pareceUuidPedidoMe(s) {
+  const t = String(s || "").trim();
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(t);
+}
+
+/** Normaliza valores do pedido ME para comparar com o que o cliente digitou. */
+function valoresRastreioComparaveis(p) {
+  return [
+    p.id,
+    p.protocol,
+    p.authorization_code != null ? String(p.authorization_code) : null,
+    p.tracking,
+    p.self_tracking,
+    p.melhorenvio_tracking,
+  ]
+    .filter(Boolean)
+    .map((x) => String(x).toUpperCase().replace(/\s/g, ""));
+}
+
+/**
+ * Escolhe o pedido cujo id, protocolo, autorização ou tracking bate com o código;
+ * senão o primeiro resultado da pesquisa (comportamento anterior).
+ */
 function escolherPedidoPorCodigoRastreio(pedidos, codigoLimpo) {
   if (!pedidos?.length) return null;
   const alvo = String(codigoLimpo || "")
     .toUpperCase()
     .replace(/\s/g, "");
-  const match = pedidos.find((p) => {
-    const tr = [p.tracking, p.self_tracking, p.melhorenvio_tracking].filter(Boolean).map(String);
-    return tr.some((t) => t.toUpperCase().replace(/\s/g, "") === alvo);
-  });
-  return match || pedidos[0];
+  const exato = pedidos.find((p) => valoresRastreioComparaveis(p).some((v) => v === alvo));
+  return exato || pedidos[0];
 }
 
 function montarDtoPublicoDesdePayloadMe(raw, codigoRastreioExibicao) {
   const campos = extrairCamposDoPayload(raw);
   const statusNormalizado = normalizarStatus(campos.statusRaw);
   const etapa = indiceEtapaProgresso(statusNormalizado);
-  const trk = String(campos.tracking || "").trim();
-  const codigoDisplay =
-    pareceUuidOrderMe(codigoRastreioExibicao) && trk
-      ? trk
-      : String(codigoRastreioExibicao || trk || "").trim() || "—";
+  const codigoDisplay = String(codigoRastreioExibicao || campos.tracking || "").trim() || "—";
   return {
     ok: true,
     codigoRastreio: codigoDisplay,
@@ -134,11 +147,8 @@ function montarDtoPublicoDesdePayloadMe(raw, codigoRastreioExibicao) {
 }
 
 /**
- * Tenta localizar o envio na API ME:
- * - Se o termo for UUID: GET /api/v2/me/orders/{id} (listar etiqueta).
- * - Caso contrário (ou se o GET direto falhar): GET /orders/search?q=...
- * @see https://docs.melhorenvio.com.br/reference/listar-informacoes-de-uma-etiqueta
- * @see https://docs.melhorenvio.com.br/reference/pesquisar-etiqueta
+ * Tenta localizar o envio na API ME pelo código (GET /orders/search) e montar o DTO público.
+ * Retorno estruturado para distinguir credenciais em falta / erro ME de “código não encontrado”.
  */
 async function consultarPublicoDiretoMelhorEnvio(codigoLimpo) {
   if (process.env.RASTREIO_CONSULTA_ME_SEM_CADASTRO === "0" && !rastreioSemBanco()) {
@@ -148,28 +158,22 @@ async function consultarPublicoDiretoMelhorEnvio(codigoLimpo) {
     return { resultado: "sem_credenciais" };
   }
   try {
-    let raw = null;
-
-    if (pareceUuidOrderMe(codigoLimpo)) {
+    if (pareceUuidPedidoMe(codigoLimpo)) {
       try {
-        raw = await buscarEnvioPorId(codigoLimpo);
-      } catch (directErr) {
-        console.warn(
-          "[rastreio] GET /orders/:id falhou, tentando search:",
-          erroParaTextoSeguro(directErr)
-        );
+        const rawPorId = await buscarEnvioPorId(codigoLimpo);
+        return { resultado: "ok", dto: montarDtoPublicoDesdePayloadMe(rawPorId, codigoLimpo) };
+      } catch (errId) {
+        console.warn("[rastreio] GET /orders/:id falhou, tentando search:", erroParaTextoSeguro(errId));
       }
     }
 
-    if (!raw) {
-      const pedidos = await pesquisarPedidosPorTermo(codigoLimpo);
-      const match = escolherPedidoPorCodigoRastreio(pedidos, codigoLimpo);
-      if (!match?.id) {
-        return { resultado: "nao_encontrado" };
-      }
-      raw = match;
+    const pedidos = await pesquisarPedidosPorTermo(codigoLimpo);
+    const match = escolherPedidoPorCodigoRastreio(pedidos, codigoLimpo);
+    if (!match?.id) {
+      return { resultado: "nao_encontrado" };
     }
-
+    // A doc ME: orders/search já devolve o mesmo payload de GET /api/v2/me/orders/{id}.
+    const raw = match;
     return { resultado: "ok", dto: montarDtoPublicoDesdePayloadMe(raw, codigoLimpo) };
   } catch (e) {
     const mensagem = erroParaTextoSeguro(e);
