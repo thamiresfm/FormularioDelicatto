@@ -339,7 +339,7 @@ input[type="text"]:focus {
 .timeline--pac::before {
   content: "";
   position: absolute;
-  left: 100px;
+  left: 96px;
   top: 12px;
   bottom: 12px;
   width: 3px;
@@ -350,6 +350,7 @@ input[type="text"]:focus {
     rgba(122, 92, 67, 0.1)
   );
   z-index: 0;
+  pointer-events: none;
 }
 
 .timeline-item {
@@ -360,6 +361,7 @@ input[type="text"]:focus {
   padding-bottom: 1.35rem;
   position: relative;
   z-index: 1;
+  isolation: isolate;
 }
 
 .timeline-date {
@@ -387,6 +389,8 @@ input[type="text"]:focus {
 }
 
 .timeline-node {
+  position: relative;
+  z-index: 2;
   width: 44px;
   height: 44px;
   border-radius: 50%;
@@ -406,7 +410,7 @@ input[type="text"]:focus {
 .timeline-item--delivered .timeline-node {
   border-color: rgba(45, 106, 79, 0.45);
   color: var(--ok);
-  background: rgba(45, 106, 79, 0.08);
+  background: #e8f3ee;
 }
 .timeline-item--transit .timeline-node {
   color: var(--ink);
@@ -421,7 +425,7 @@ input[type="text"]:focus {
 .timeline-item--attention .timeline-node {
   border-color: rgba(155, 44, 44, 0.55);
   color: var(--err);
-  background: rgba(155, 44, 44, 0.08);
+  background: #fbeaec;
 }
 
 .timeline-item--latest .timeline-node {
