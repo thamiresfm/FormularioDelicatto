@@ -267,6 +267,11 @@ app.get("/rastreios", (_req, res) => {
 app.get("/rastreios/admin", (_req, res) => {
   res.redirect(301, "/rastreios/admin/");
 });
+app.get("/rastreios/tracking", (req, res) => {
+  const i = req.url.indexOf("?");
+  const qs = i >= 0 ? req.url.slice(i) : "";
+  res.redirect(301, `/rastreios/tracking/${qs}`);
+});
 app.use(express.static(path.join(__dirname, "public")));
 
 const fieldsUpload = upload.fields([

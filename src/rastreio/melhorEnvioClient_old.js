@@ -260,61 +260,6 @@ function dataMarcoEmTransporte(payload) {
 }
 
 /**
- * Local/unidade a partir de campos comuns da ME e transportadoras (sem persistência).
- */
-function textoLocalDeEvento(ev) {
-  if (!ev || typeof ev !== "object") return "";
-  const parts = [
-    ev.location,
-    ev.unit,
-    ev.branch_name,
-    ev.branch,
-    ev.facility,
-    ev.city && (ev.state || ev.uf) ? `${ev.city}/${ev.state || ev.uf}` : null,
-    ev.city && !ev.state ? ev.city : null,
-  ].filter(Boolean);
-  if (parts.length) return parts.map(String).join(" — ");
-  const L = ev.localization;
-  if (L && typeof L === "object") {
-    const citySt = [L.city, L.state || L.uf].filter(Boolean).join("/");
-    return [L.name || L.unit, citySt].filter(Boolean).join(" — ");
-  }
-  const addr = ev.address;
-  if (addr && typeof addr === "object") {
-    const citySt = [addr.city, addr.state || addr.uf].filter(Boolean).join("/");
-    return [addr.name, citySt].filter(Boolean).join(" — ");
-  }
-  return "";
-}
-
-function tituloEDetalheEvento(ev) {
-  const title = ev.title || ev.name;
-  const desc = ev.description || ev.message || ev.details;
-  if (title && desc && String(title).trim() !== String(desc).trim()) {
-    return { titulo: String(title).trim(), detalhe: String(desc).trim() };
-  }
-  const titulo = String(desc || title || ev.status || "Atualização").trim() || "Atualização";
-  const extras = [ev.details, ev.subtitle, ev.sub_description, ev.note, ev.observation]
-    .map((x) => String(x || "").trim())
-    .filter((x) => x && x !== titulo);
-  return { titulo, detalhe: extras[0] || "" };
-}
-
-function normalizarEventoParaDominio(ev, toDate) {
-  const when = ev.created_at || ev.date || ev.occurred_at || ev.datetime || null;
-  const { titulo, detalhe } = tituloEDetalheEvento(ev);
-  const local = textoLocalDeEvento(ev) || null;
-  const st = ev.status || ev.state || null;
-  return {
-    ocorridoEm: toDate(when),
-    descricao: titulo,
-    detalhe: detalhe || null,
-    local: local || null,
-    statusRaw: st ? String(st) : null,
-  };
-}
-
-/**
  * Normaliza payload diverso da API para um formato estável usado pelo domínio.
  */
 function extrairCamposDoPayload(payload) {

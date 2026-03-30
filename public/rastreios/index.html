@@ -15,7 +15,7 @@
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Great+Vibes&family=Source+Sans+3:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=3" />
+    <link rel="stylesheet" href="./styles.css?v=4" />
   </head>
   <body>
     <div class="page-bg" aria-hidden="true"></div>
@@ -52,6 +52,7 @@
           </label>
           <button type="submit" class="btn btn-primary" id="btn-consultar">Consultar envio</button>
           <p class="hint">Somente o código fornecido pela loja é aceito nesta consulta.</p>
+          <p class="hint">Depois da consulta, a página gera um link no formato <strong>/rastreios/tracking</strong> com o código, pronto para partilhar.</p>
         </form>
         <div id="state-loading" class="state-hidden toast-inline info" role="status">Consultando…</div>
         <div id="state-erro" class="state-hidden toast-inline error" role="alert"></div>
@@ -96,6 +97,6 @@
         if (h === "localhost" || h === "127.0.0.1") m.setAttribute("content", "");
       })();
     </script>
-    <script type="module" src="./app.js?v=10"></script>
+    <script type="module" src="./app.js?v=15"></script>
   </body>
 </html>

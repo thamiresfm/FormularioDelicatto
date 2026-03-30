@@ -115,8 +115,6 @@ function montarDtoPublicoDesdePayloadMe(raw, codigoRastreioExibicao) {
     eventos: (campos.eventos || []).map((e) => ({
       ocorridoEm: e.ocorridoEm,
       descricao: e.descricao,
-      detalhe: e.detalhe ?? null,
-      local: e.local ?? null,
       statusRaw: e.statusRaw,
     })),
     pedido: null,
@@ -325,8 +323,6 @@ function montarDtoPublico(envio) {
     eventos: (envio.eventos || []).map((e) => ({
       ocorridoEm: e.ocorridoEm,
       descricao: e.descricao,
-      detalhe: e.detalhe ?? null,
-      local: e.local ?? null,
       statusRaw: e.statusRaw,
     })),
     pedido: envio.pedido

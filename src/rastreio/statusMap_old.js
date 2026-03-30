@@ -15,7 +15,7 @@ const NEGOCIO = {
 
 const MENSAGENS = {
   pending: "Seu envio foi preparado e está aguardando postagem.",
-  paid: "Seu envio foi preparado e está aguardando postagem.",
+  paid: "A etiqueta foi paga. Em breve sua caixa seguirá para postagem.",
   posted: "Sua caixa já foi postada nos Correios ou transportadora.",
   in_transit: "Sua caixa já foi enviada e está a caminho.",
   delivered: "Seu pedido foi entregue com sucesso.",
@@ -68,15 +68,19 @@ function mensagemAmigavel(statusNormalizado) {
   return MENSAGENS[statusNormalizado] || MENSAGENS.pending;
 }
 
-/** Etapas para a barra de progresso (0–3; “paid” conta como preparando). */
+/** Etapas para a barra de progresso (0–4 índice exibido como “ativa” conforme status). */
 function indiceEtapaProgresso(statusNormalizado) {
-  const ordem = [NEGOCIO.PENDING, NEGOCIO.POSTED, NEGOCIO.IN_TRANSIT, NEGOCIO.DELIVERED];
+  const ordem = [
+    NEGOCIO.PENDING,
+    NEGOCIO.PAID,
+    NEGOCIO.POSTED,
+    NEGOCIO.IN_TRANSIT,
+    NEGOCIO.DELIVERED,
+  ];
   if (statusNormalizado === NEGOCIO.CANCELED || statusNormalizado === NEGOCIO.ATTENTION) return -1;
-  const alvo =
-    statusNormalizado === NEGOCIO.PAID ? NEGOCIO.PENDING : statusNormalizado;
-  const i = ordem.indexOf(alvo);
+  const i = ordem.indexOf(statusNormalizado);
   if (i >= 0) return i;
-  return 0;
+  return 1;
 }
 
 module.exports = {

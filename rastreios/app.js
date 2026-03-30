@@ -43,6 +43,20 @@ function extrairCodigoDaQuery() {
   }
 }
 
+/** URL amigável para compartilhar: /rastreios/tracking?888... (valor cru após ?). */
+function definirUrlCompartilhavel(codigo) {
+  const cod = String(codigo || "").trim();
+  if (cod.length < 3) return;
+  const q = encodeURIComponent(cod);
+  const path = "/rastreios/tracking";
+  try {
+    const url = `${window.location.origin}${path}?${q}`;
+    history.replaceState({ rastreio: cod }, "", url);
+  } catch {
+    /* ignore */
+  }
+}
+
 const MSG_ERRO_REDE =
   "O navegador não conseguiu falar com o servidor (rede, bloqueador ou cache antigo). " +
   "A API está acessível: teste no Postman ou aguarde ~1 minuto no primeiro acesso (Render gratuito). " +
@@ -89,7 +103,7 @@ const wrapSteps = document.getElementById("wrap-steps");
 
 const LABEL_STATUS = {
   pending: "Aguardando",
-  paid: "Etiqueta paga",
+  paid: "Preparando",
   posted: "Postado",
   in_transit: "Em trânsito",
   delivered: "Entregue",
@@ -108,13 +122,45 @@ function fmtData(iso) {
   }
 }
 
+const MESES_CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
+function fmtDataDiaLinha(iso) {
+  if (!iso) return "—";
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "—";
+    return `${d.getDate()} ${MESES_CURTOS[d.getMonth()]}`;
+  } catch {
+    return "—";
+  }
+}
+
+function fmtDataHoraLinha(iso) {
+  if (!iso) return "—";
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return "—";
+  }
+}
+
 /** Ícone por tipo de evento (timeline estilo PAC, cores do tema). */
-function classificarEvento(desc) {
-  const d = String(desc || "").toLowerCase();
-  if (/entregue|destinatário|destinatario|entrega ao/i.test(d)) return "delivered";
-  if (/trânsito|transito|encaminhado|roteiriza|em transporte/i.test(d)) return "transit";
-  if (/postado|postagem|coleta|transferência|transferencia/i.test(d)) return "posted";
-  if (/etiqueta|gerad|paga|pagamento|liberad/i.test(d)) return "label";
+function classificarEvento(descricao, detalhe) {
+  const d = `${descricao || ""} ${detalhe || ""}`.toLowerCase();
+  if (/extravi|extraviad|perdido|roub|devolv|suspenso|danif|atraso crítico/i.test(d)) return "attention";
+  if (
+    (/entregue|destinatário|destinatario|entrega ao/i.test(d)) &&
+    !/undelivered|não entregue|nao entregue/i.test(d)
+  )
+    return "delivered";
+  if (
+    /trânsito|transito|encaminhado|roteiriza|em transporte|\btransporte\b|saiu para entrega|transferido para outra unidade/i.test(d)
+  )
+    return "transit";
+  if (/postado|postagem|coleta|transferência|transferencia|chegou na transportadora/i.test(d)) return "posted";
+  if (/etiqueta|gerad|paga|pagamento|liberad|cte|adicionado no sistema/i.test(d)) return "label";
   return "default";
 }
 
@@ -129,9 +175,16 @@ function svgTimelineIcon(kind) {
       return `<svg ${a} class="timeline-svg" viewBox="0 0 24 24" width="20" height="20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>`;
     case "label":
       return `<svg ${a} class="timeline-svg" viewBox="0 0 24 24" width="20" height="20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>`;
+    case "attention":
+      return `<svg ${a} class="timeline-svg" viewBox="0 0 24 24" width="20" height="20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>`;
     default:
       return `<svg ${a} class="timeline-svg" viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>`;
   }
+}
+
+function svgPin() {
+  const a = 'aria-hidden="true" focusable="false"';
+  return `<svg ${a} class="timeline-loc-svg" viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z"/></svg>`;
 }
 
 function setLoading(on) {
@@ -256,11 +309,28 @@ function renderResultado(data) {
     li.textContent = "Nenhum evento detalhado disponível ainda.";
     timeline.appendChild(li);
   } else {
-    evs.forEach((ev, idx) => {
-      const kind = classificarEvento(ev.descricao);
+    const evsOrd = [...evs].sort((a, b) => {
+      const ta = a.ocorridoEm ? new Date(a.ocorridoEm).getTime() : 0;
+      const tb = b.ocorridoEm ? new Date(b.ocorridoEm).getTime() : 0;
+      return tb - ta;
+    });
+
+    evsOrd.forEach((ev, idx) => {
+      const kind = classificarEvento(ev.descricao, ev.detalhe);
       const li = document.createElement("li");
       li.className = `timeline-item timeline-item--${kind}`;
       li.setAttribute("role", "listitem");
+
+      const dateCol = document.createElement("div");
+      dateCol.className = "timeline-date";
+      const dayEl = document.createElement("span");
+      dayEl.className = "timeline-date__day";
+      dayEl.textContent = fmtDataDiaLinha(ev.ocorridoEm);
+      const timeEl = document.createElement("span");
+      timeEl.className = "timeline-date__time";
+      timeEl.textContent = fmtDataHoraLinha(ev.ocorridoEm);
+      dateCol.appendChild(dayEl);
+      dateCol.appendChild(timeEl);
 
       const node = document.createElement("div");
       node.className = "timeline-node";
@@ -272,19 +342,37 @@ function renderResultado(data) {
       const title = document.createElement("p");
       title.className = "timeline-item__title";
       title.textContent = ev.descricao || "Atualização";
+      body.appendChild(title);
+
+      if (ev.detalhe && String(ev.detalhe).trim()) {
+        const sub = document.createElement("p");
+        sub.className = "timeline-item__detail";
+        sub.textContent = String(ev.detalhe).trim();
+        body.appendChild(sub);
+      }
+
+      if (ev.local && String(ev.local).trim()) {
+        const loc = document.createElement("p");
+        loc.className = "timeline-item__location";
+        loc.insertAdjacentHTML("afterbegin", svgPin());
+        const locTxt = document.createElement("span");
+        locTxt.textContent = String(ev.local).trim();
+        loc.appendChild(locTxt);
+        body.appendChild(loc);
+      }
 
       const t = document.createElement("time");
-      t.className = "timeline-item__time";
+      t.className = "timeline-item__time visually-hidden";
       t.dateTime = ev.ocorridoEm || "";
       t.textContent = fmtData(ev.ocorridoEm);
-
-      body.appendChild(title);
       body.appendChild(t);
+
+      li.appendChild(dateCol);
       li.appendChild(node);
       li.appendChild(body);
       timeline.appendChild(li);
 
-      if (idx === evs.length - 1) {
+      if (idx === 0) {
         li.classList.add("timeline-item--latest");
       }
     });
@@ -334,6 +422,7 @@ form.addEventListener("submit", async (e) => {
 
     if (data.ok) {
       try {
+        definirUrlCompartilhavel(codigo);
         renderResultado(data);
       } catch (renderErr) {
         console.error("[rastreio] render:", renderErr);
@@ -354,6 +443,7 @@ form.addEventListener("submit", async (e) => {
       mostrarErro(data.erro || "Falha na integração.");
       if (data.cache) {
         try {
+          definirUrlCompartilhavel(codigo);
           renderResultado(data.cache);
         } catch (renderErr) {
           console.error("[rastreio] render cache:", renderErr);
