@@ -66,6 +66,7 @@ const msgAmigavel = document.getElementById("msg-amigavel");
 const stepsBar = document.getElementById("steps-bar");
 const metaGrid = document.getElementById("meta-grid");
 const timeline = document.getElementById("timeline");
+const timelineHeader = document.getElementById("timeline-header");
 const wrapSteps = document.getElementById("wrap-steps");
 
 const LABEL_STATUS = {
@@ -86,6 +87,32 @@ function fmtData(iso) {
     return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
   } catch {
     return "—";
+  }
+}
+
+/** Ícone por tipo de evento (timeline estilo PAC, cores do tema). */
+function classificarEvento(desc) {
+  const d = String(desc || "").toLowerCase();
+  if (/entregue|destinatário|destinatario|entrega ao/i.test(d)) return "delivered";
+  if (/trânsito|transito|encaminhado|roteiriza|em transporte/i.test(d)) return "transit";
+  if (/postado|postagem|coleta|transferência|transferencia/i.test(d)) return "posted";
+  if (/etiqueta|gerad|paga|pagamento|liberad/i.test(d)) return "label";
+  return "default";
+}
+
+function svgTimelineIcon(kind) {
+  const a = 'aria-hidden="true" focusable="false"';
+  switch (kind) {
+    case "delivered":
+      return `<svg ${a} class="timeline-svg" viewBox="0 0 24 24" width="20" height="20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+    case "transit":
+      return `<svg ${a} class="timeline-svg" viewBox="0 0 24 24" width="20" height="20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M1 3h15v13H1V3zm16 8h4l3 4v3h-4M5 18a2 2 0 104 0 2 2 0 00-4 0zm12 0a2 2 0 104 0 2 2 0 00-4 0"/></svg>`;
+    case "posted":
+      return `<svg ${a} class="timeline-svg" viewBox="0 0 24 24" width="20" height="20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>`;
+    case "label":
+      return `<svg ${a} class="timeline-svg" viewBox="0 0 24 24" width="20" height="20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>`;
+    default:
+      return `<svg ${a} class="timeline-svg" viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>`;
   }
 }
 
@@ -173,22 +200,65 @@ function renderResultado(data) {
 
   timeline.innerHTML = "";
   const evs = data.eventos || [];
+  timeline.classList.toggle("timeline--pac--no-rail", evs.length === 0);
+
+  if (timelineHeader) {
+    timelineHeader.innerHTML = "";
+    if (evs.length) {
+      timelineHeader.classList.remove("state-hidden");
+      const inner = document.createElement("div");
+      inner.className = "timeline-ship-head__inner";
+      const tit = document.createElement("p");
+      tit.className = "timeline-ship-head__title";
+      tit.textContent = data.transportadora ? `Envio — ${data.transportadora}` : "Envio";
+      const sub = document.createElement("p");
+      sub.className = "timeline-ship-head__sub";
+      sub.textContent = `Código: ${data.codigoRastreio || "—"}`;
+      inner.appendChild(tit);
+      inner.appendChild(sub);
+      timelineHeader.appendChild(inner);
+    } else {
+      timelineHeader.classList.add("state-hidden");
+    }
+  }
+
   if (!evs.length) {
     const li = document.createElement("li");
+    li.className = "timeline-item timeline-item--empty";
     li.textContent = "Nenhum evento detalhado disponível ainda.";
     timeline.appendChild(li);
   } else {
-    evs.forEach((ev) => {
+    evs.forEach((ev, idx) => {
+      const kind = classificarEvento(ev.descricao);
       const li = document.createElement("li");
+      li.className = `timeline-item timeline-item--${kind}`;
+      li.setAttribute("role", "listitem");
+
+      const node = document.createElement("div");
+      node.className = "timeline-node";
+      node.innerHTML = svgTimelineIcon(kind);
+
+      const body = document.createElement("div");
+      body.className = "timeline-item__body";
+
+      const title = document.createElement("p");
+      title.className = "timeline-item__title";
+      title.textContent = ev.descricao || "Atualização";
+
       const t = document.createElement("time");
+      t.className = "timeline-item__time";
       t.dateTime = ev.ocorridoEm || "";
       t.textContent = fmtData(ev.ocorridoEm);
-      const desc = document.createElement("span");
-      desc.className = "timeline-desc";
-      desc.textContent = ev.descricao || "";
-      li.appendChild(t);
-      li.appendChild(desc);
+
+      body.appendChild(title);
+      body.appendChild(t);
+      li.appendChild(node);
+      li.appendChild(body);
       timeline.appendChild(li);
+
+      if (idx === evs.length - 1) {
+        li.classList.add("timeline-item--latest");
+      }
     });
   }
 }
