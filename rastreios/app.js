@@ -262,7 +262,6 @@ function renderResultado(data) {
     ["Transportadora", data.transportadora || "—"],
     ["Criação", fmtData(data.dataCriacao)],
     ["Última atualização", fmtData(data.dataAtualizacao)],
-    ["Sincronizado em", fmtData(data.ultimaSincronizacao)],
   ];
   if (data.pedido?.codigo) {
     rows.push(["Pedido", data.pedido.codigo]);
