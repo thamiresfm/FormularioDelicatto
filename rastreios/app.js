@@ -25,6 +25,24 @@ function urlApiConsultar() {
   return `${base}/api/rastreio/consultar`;
 }
 
+/**
+ * Código na URL: `?codigo=888...` ou `?888...` (só o número após ? , sem nome de parâmetro).
+ */
+function extrairCodigoDaQuery() {
+  const raw = window.location.search.replace(/^\?/, "").trim();
+  if (!raw) return "";
+  if (raw.includes("=")) {
+    const p = new URLSearchParams(window.location.search);
+    const v = p.get("codigo") || p.get("c") || p.get("q") || p.get("rastreio");
+    return String(v || "").trim();
+  }
+  try {
+    return decodeURIComponent(raw).trim();
+  } catch {
+    return raw.trim();
+  }
+}
+
 const MSG_ERRO_REDE =
   "O navegador não conseguiu falar com o servidor (rede, bloqueador ou cache antigo). " +
   "A API está acessível: teste no Postman ou aguarde ~1 minuto no primeiro acesso (Render gratuito). " +
@@ -359,3 +377,12 @@ form.addEventListener("submit", async (e) => {
     setLoading(false);
   }
 });
+
+(function aplicarCodigoDaUrl() {
+  const cod = extrairCodigoDaQuery();
+  if (!input || cod.length < 3) return;
+  input.value = cod;
+  if (form) {
+    form.requestSubmit();
+  }
+})();
