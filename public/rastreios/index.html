@@ -15,7 +15,7 @@
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Great+Vibes&family=Source+Sans+3:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=3" />
+    <link rel="stylesheet" href="./styles.css?v=4" />
   </head>
   <body>
     <div class="page-bg" aria-hidden="true"></div>
@@ -51,11 +51,12 @@
             />
           </label>
           <button type="submit" class="btn btn-primary" id="btn-consultar">Consultar envio</button>
-          <p class="hint">
-            Use o código de rastreio informado pela loja ou, se tiver, o ID do envio no Melhor Envio (formato UUID).
-          </p>
+          <p class="hint">Somente o código fornecido pela loja é aceito nesta consulta.</p>
         </form>
-        <div id="state-loading" class="state-hidden toast-inline info" role="status">Consultando…</div>
+        <div id="state-loading" class="state-hidden toast-inline info" role="status">
+          <span class="loading-line">Consultando…</span>
+          <span class="loading-hint">No primeiro acesso o servidor pode levar até ~1 minuto.</span>
+        </div>
         <div id="state-erro" class="state-hidden toast-inline error" role="alert"></div>
         <div id="painel-resultado" class="state-hidden result-panel">
           <div class="result-hero">

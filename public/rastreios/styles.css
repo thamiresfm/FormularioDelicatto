@@ -450,6 +450,18 @@ input[type="text"]:focus {
 .toast-inline.info {
   background: var(--accent-soft);
 }
+.toast-inline.info .loading-line {
+  display: block;
+  font-weight: 600;
+}
+.toast-inline.info .loading-hint {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 400;
+  color: var(--ink-muted);
+  line-height: 1.35;
+}
 .site-footer {
   text-align: center;
   padding: 2rem 1rem;
