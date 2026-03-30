@@ -187,8 +187,18 @@ function renderResultado(data) {
       stepsBar.querySelectorAll(".step").forEach((el) => el.classList.add("done"));
     }
     if (stepTrackFill && etapas.length) {
-      const pct =
-        st === "delivered" ? 100 : Math.min(100, ((etapa + 1) / etapas.length) * 100);
+      let pct;
+      if (st === "delivered") {
+        pct = 100;
+      } else if (etapa < 0) {
+        pct = 0;
+      } else if (etapas.length > 1) {
+        // Linha proporcional ao índice da etapa (alinhada ao status normalizado no servidor).
+        pct = Math.min(100, (etapa / (etapas.length - 1)) * 100);
+        if (pct > 0 && pct < 8) pct = 8;
+      } else {
+        pct = Math.min(100, ((etapa + 1) / etapas.length) * 100);
+      }
       stepTrackFill.style.width = `${pct}%`;
     }
   }

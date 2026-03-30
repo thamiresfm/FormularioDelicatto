@@ -51,9 +51,11 @@ function normalizarStatus(raw) {
   const paid = ["paid", "purchased", "ready"];
   const attention = ["paused", "suspended", "undelivered", "returned", "stolen", "lost"];
 
-  if (delivered.some((x) => s.includes(x) || s === x)) return NEGOCIO.DELIVERED;
+  // “undelivered” contém a substring “delivered” — tratar antes de entregue.
+  if (attention.some((x) => s === x || s.includes(x))) return NEGOCIO.ATTENTION;
+  if (delivered.some((x) => s === x || (s.includes(x) && !s.includes("undeliver"))))
+    return NEGOCIO.DELIVERED;
   if (canceled.some((x) => s.includes(x) || s === x)) return NEGOCIO.CANCELED;
-  if (attention.some((x) => s.includes(x) || s === x)) return NEGOCIO.ATTENTION;
   if (transit.some((x) => s.includes(x) || s === x)) return NEGOCIO.IN_TRANSIT;
   if (posted.some((x) => s === x || s.includes(x))) return NEGOCIO.POSTED;
   if (paid.some((x) => s === x || s.includes(x))) return NEGOCIO.PAID;
